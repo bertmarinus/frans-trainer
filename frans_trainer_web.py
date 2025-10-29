@@ -86,7 +86,7 @@ st.subheader("Oefening")
 st.write(f"**Zin:** {st.session_state.huidige['Zin']}")
 st.write(f"**Tijd:** {st.session_state.huidige['Tijd']}")
 
-antwoord = st.text_input("Vul de juiste vervoeging in:")
+antwoord = st.text_input("Vul de juiste vervoeging in:", key="antwoord")
 
 if st.button("Controleer"):
     st.session_state.score["totaal"] += 1
@@ -105,8 +105,8 @@ if st.button("Controleer"):
     # Volgende zin selecteren
     st.session_state.huidige = select_zin()
     
-    # Rerun zodat nieuwe zin direct verschijnt
-    st.experimental_rerun()
+    # Reset het antwoordveld
+    st.session_state.antwoord = ""
 
 if st.button("Hint"):
     st.info(f"Hint: {st.session_state.huidige['Vervoeging']}")
