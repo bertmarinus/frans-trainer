@@ -38,7 +38,6 @@ for key, default in {
     "score": {"goed": 0, "totaal": 0, "log": []},
     "herhaling": {},
     "huidige_zin": None,
-    "actieve_zin": None,
     "toon_hint": False
 }.items():
     if key not in st.session_state:
@@ -51,22 +50,17 @@ geselecteerde_tijden = st.multiselect("Kies tijden:", tijden, default=tijden)
 
 filtered = df[(df["Infinitief"] == werkwoord) & (df["Tijd"].isin(geselecteerde_tijden))]
 
-def selecteer_nieuwe_zin():
+def selecteer_willekeurige_zin():
     kandidaten = filtered.copy()
-    kandidaten["HerhalingScore"] = kandidaten["Zin"].apply(lambda z: st.session_state.herhaling.get(z, 0))
     if st.session_state.huidige_zin is not None:
         vorige_zin = st.session_state.huidige_zin["Zin"]
         kandidaten = kandidaten[kandidaten["Zin"] != vorige_zin]
-    kandidaten = kandidaten.sort_values("HerhalingScore")
-    return kandidaten.iloc[0] if not kandidaten.empty else None
+    return kandidaten.sample(1).iloc[0] if not kandidaten.empty else None
 
-if st.session_state.huidige_zin is None or st.session_state.huidige_zin.get("Infinitief") != werkwoord:
-    st.session_state.huidige_zin = selecteer_nieuwe_zin()
+if st.session_state.huidige_zin is None:
+    st.session_state.huidige_zin = selecteer_willekeurige_zin()
 
-# Zet actieve zin vast vóór render
-st.session_state.actieve_zin = st.session_state.huidige_zin
-
-zin_data = st.session_state.actieve_zin
+zin_data = st.session_state.huidige_zin
 if isinstance(zin_data, pd.Series) and "Zin" in zin_data and pd.notna(zin_data["Zin"]):
     st.subheader("Oefening")
     st.write(f"**Zin:** {zin_data['Zin']}")
@@ -91,7 +85,7 @@ if isinstance(zin_data, pd.Series) and "Zin" in zin_data and pd.notna(zin_data["
             st.error(f"❌ Fout! Het juiste antwoord is: {zin_data['Vervoeging']}")
         st.session_state.herhaling[zin_data["Zin"]] = st.session_state.herhaling.get(zin_data["Zin"], 0) + (0 if juist else 1)
         st.session_state.score["log"].append((datetime.date.today(), int(juist), 1))
-        st.session_state.huidige_zin = selecteer_nieuwe_zin()
+        st.session_state.huidige_zin = selecteer_willekeurige_zin()
         st.session_state.reset_antwoord = True
         st.session_state.pop("controleer_enter", None)
         st.session_state.toon_hint = False
