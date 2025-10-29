@@ -92,6 +92,9 @@ if st.button("Controleer"):
     # Reset inputveld
     del st.session_state["antwoord"]
 
+if st.button("Hint"):
+    st.info(f"Hint: {st.session_state.huidige['Vervoeging']}")
+
 st.write(f"**Score:** {st.session_state.score['goed']} / {st.session_state.score['totaal']}")
 
 if st.button("Toon voortgangsgrafiek"):
