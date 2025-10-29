@@ -7,7 +7,6 @@ import matplotlib.pyplot as plt
 st.set_page_config(page_title="🇫🇷 Franse Werkwoordentrainer", layout="centered")
 st.title("🇫🇷 Franse Werkwoordentrainer")
 
-# 📥 Gegevens inladen
 @st.cache_data
 def load_default_data():
     try:
@@ -35,16 +34,15 @@ if df.empty:
     st.warning("Geen gegevens beschikbaar.")
     st.stop()
 
-# 🧠 Session state initialiseren
 for key, default in {
     "score": {"goed": 0, "totaal": 0, "log": []},
     "herhaling": {},
-    "huidige_zin": None
+    "huidige_zin": None,
+    "toon_hint": False
 }.items():
     if key not in st.session_state:
         st.session_state[key] = default
 
-# 🔍 Selectie
 infinitieven = sorted(df["Infinitief"].unique())
 werkwoord = st.selectbox("Kies werkwoord:", infinitieven)
 tijden = sorted(df[df["Infinitief"] == werkwoord]["Tijd"].unique())
@@ -52,7 +50,6 @@ geselecteerde_tijden = st.multiselect("Kies tijden:", tijden, default=tijden)
 
 filtered = df[(df["Infinitief"] == werkwoord) & (df["Tijd"].isin(geselecteerde_tijden))]
 
-# 🎯 Zin selecteren
 def selecteer_nieuwe_zin():
     kandidaten = filtered.copy()
     kandidaten["HerhalingScore"] = kandidaten["Zin"].apply(lambda z: st.session_state.herhaling.get(z, 0))
@@ -65,7 +62,6 @@ def selecteer_nieuwe_zin():
 if st.session_state.huidige_zin is None or st.session_state.huidige_zin.get("Infinitief") != werkwoord:
     st.session_state.huidige_zin = selecteer_nieuwe_zin()
 
-# 📝 Oefening
 zin_data = st.session_state.huidige_zin
 if isinstance(zin_data, pd.Series) and "Zin" in zin_data and pd.notna(zin_data["Zin"]):
     st.subheader("Oefening")
@@ -81,6 +77,7 @@ if isinstance(zin_data, pd.Series) and "Zin" in zin_data and pd.notna(zin_data["
     )
 
     if st.button("Controleer") or st.session_state.get("controleer_enter"):
+        antwoord = antwoord or ""
         st.session_state.score["totaal"] += 1
         juist = antwoord.strip().lower() == zin_data["Vervoeging"].lower()
         if juist:
@@ -94,12 +91,15 @@ if isinstance(zin_data, pd.Series) and "Zin" in zin_data and pd.notna(zin_data["
         st.session_state.huidige_zin = selecteer_nieuwe_zin()
         st.session_state.reset_antwoord = True
         st.session_state.pop("controleer_enter", None)
+        st.session_state.toon_hint = False
         antwoord_input.text_input("Vul de juiste vervoeging in:", value="", key="resetveld")
 
     if st.button("Hint"):
+        st.session_state.toon_hint = True
+
+    if st.session_state.toon_hint:
         st.info(f"Hint: {zin_data['Vervoeging']}")
 
-# 📊 Score en voortgang
 st.write(f"**Score:** {st.session_state.score['goed']} / {st.session_state.score['totaal']}")
 
 if st.button("Toon voortgangsgrafiek"):
@@ -117,6 +117,5 @@ if st.button("Toon voortgangsgrafiek"):
     else:
         st.info("Nog geen voortgang beschikbaar.")
 
-# 🧹 Reset vlag wissen na render
 if "reset_antwoord" in st.session_state:
-    del st.session_state.reset_antwoord 
+    del st.session_state.reset_antwoord
