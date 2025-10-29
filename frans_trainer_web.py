@@ -69,28 +69,32 @@ st.write(f"**Zin:** {st.session_state.huidige['Zin']}")
 st.write(f"**Tijd:** {st.session_state.huidige['Tijd']}")
 
 # Inputveld met key "antwoord"
-antwoord = st.text_input("Vul de juiste vervoeging in:", value="", key="antwoord")
+if "antwoord" not in st.session_state:
+    st.session_state.antwoord = ""
 
-if st.button("Controleer"):
-    user_antwoord = st.session_state.antwoord.strip().lower()
-    juist = user_antwoord == st.session_state.huidige["Vervoeging"].lower()
+antwoord = st.text_input("Vul de juiste vervoeging in:", value=st.session_state.antwoord, key="antwoord")
+
+def volgende_zin():
+    # Update herhaling en log
+    zin = st.session_state.huidige["Zin"]
+    juist = st.session_state.antwoord.strip().lower() == st.session_state.huidige["Vervoeging"].lower()
+    st.session_state.herhaling[zin] = st.session_state.herhaling.get(zin, 0) + (0 if juist else 1)
     st.session_state.score["totaal"] += 1
     if juist:
         st.session_state.score["goed"] += 1
         st.success("✅ Goed!")
     else:
+        st.session_state.score["totaal"] += 0
         st.error(f"❌ Fout! Het juiste antwoord is: {st.session_state.huidige['Vervoeging']}")
-
-    # Update herhaling en log
-    zin = st.session_state.huidige["Zin"]
-    st.session_state.herhaling[zin] = st.session_state.herhaling.get(zin, 0) + (0 if juist else 1)
     st.session_state.score["log"].append((datetime.date.today(), int(juist), 1))
 
-    # Volgende zin selecteren
+    # Kies nieuwe zin
     st.session_state.huidige = select_zin(filtered)
-
     # Reset inputveld
-    del st.session_state["antwoord"]
+    st.session_state.antwoord = ""
+
+if st.button("Controleer"):
+    volgende_zin()
 
 if st.button("Hint"):
     st.info(f"Hint: {st.session_state.huidige['Vervoeging']}")
