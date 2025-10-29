@@ -86,9 +86,13 @@ st.subheader("Oefening")
 st.write(f"**Zin:** {st.session_state.huidige['Zin']}")
 st.write(f"**Tijd:** {st.session_state.huidige['Tijd']}")
 
-antwoord = st.text_input("Vul de juiste vervoeging in:", key="antwoord")
+# Gebruik een unieke key zodat Streamlit het veld goed beheert
+antwoord = st.text_input("Vul de juiste vervoeging in:", key="antwoord_field")
 
-if st.button("Controleer"):
+controleer = st.button("Controleer")
+hint = st.button("Hint")
+
+if controleer:
     st.session_state.score["totaal"] += 1
     juist = antwoord.strip().lower() == st.session_state.huidige["Vervoeging"].lower()
     if juist:
@@ -105,10 +109,10 @@ if st.button("Controleer"):
     # Volgende zin selecteren
     st.session_state.huidige = select_zin()
     
-    # Reset het antwoordveld
-    st.session_state.antwoord = ""
+    # Antwoordveld resetten via key (Streamlit doet dit automatisch bij rerun)
+    st.experimental_rerun()
 
-if st.button("Hint"):
+if hint:
     st.info(f"Hint: {st.session_state.huidige['Vervoeging']}")
 
 st.write(f"**Score:** {st.session_state.score['goed']} / {st.session_state.score['totaal']}")
