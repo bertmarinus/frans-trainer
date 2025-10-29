@@ -39,8 +39,7 @@ if df.empty:
 for key, default in {
     "score": {"goed": 0, "totaal": 0, "log": []},
     "herhaling": {},
-    "huidige_zin": None,
-    "antwoord_temp": ""
+    "huidige_zin": None
 }.items():
     if key not in st.session_state:
         st.session_state[key] = default
@@ -65,7 +64,6 @@ def selecteer_nieuwe_zin():
 
 if st.session_state.huidige_zin is None or st.session_state.huidige_zin.get("Infinitief") != werkwoord:
     st.session_state.huidige_zin = selecteer_nieuwe_zin()
-    st.session_state.antwoord_temp = ""
 
 # 📝 Oefening
 zin_data = st.session_state.huidige_zin
@@ -73,7 +71,7 @@ if isinstance(zin_data, pd.Series) and "Zin" in zin_data and pd.notna(zin_data["
     st.subheader("Oefening")
     st.write(f"**Zin:** {zin_data['Zin']}")
     st.write(f"**Tijd:** {zin_data['Tijd']}")
-    antwoord = st.text_input("Vul de juiste vervoeging in:", value=st.session_state.antwoord_temp, key="antwoord_temp")
+    antwoord = st.text_input("Vul de juiste vervoeging in:")
 
     if st.button("Controleer"):
         st.session_state.score["totaal"] += 1
@@ -87,7 +85,6 @@ if isinstance(zin_data, pd.Series) and "Zin" in zin_data and pd.notna(zin_data["
         st.session_state.herhaling[zin] = st.session_state.herhaling.get(zin, 0) + (0 if juist else 1)
         st.session_state.score["log"].append((datetime.date.today(), int(juist), 1))
         st.session_state.huidige_zin = selecteer_nieuwe_zin()
-        st.session_state.antwoord_temp = ""
 
     if st.button("Hint"):
         st.info(f"Hint: {zin_data['Vervoeging']}")
