@@ -16,7 +16,6 @@ def load_data():
     except Exception:
         return pd.DataFrame()
 
-# Gegevensbron kiezen
 source = st.radio("Kies gegevensbron:", ["Ingebouwde zinnen", "Upload Excel/CSV"])
 
 df = pd.DataFrame()
@@ -38,15 +37,18 @@ if df.empty:
     st.warning("Geen gegevens beschikbaar.")
     st.stop()
 
-# Initialiseer session_state
+# Session state initiëren
 if "score" not in st.session_state:
     st.session_state.score = {"goed": 0, "totaal": 0, "log": []}
 
 if "herhaling" not in st.session_state:
     st.session_state.herhaling = {}
 
-if "antwoord_text" not in st.session_state:
-    st.session_state.antwoord_text = ""
+if "huidige" not in st.session_state:
+    st.session_state.huidige = None
+
+if "antwoord" not in st.session_state:
+    st.session_state.antwoord = ""
 
 def select_zin(filtered_df):
     kandidaten = filtered_df.copy()
@@ -63,37 +65,41 @@ selectie_tijden = st.multiselect("Kies tijden:", tijden, default=tijden)
 
 filtered = df[(df["Infinitief"] == werkwoord) & (df["Tijd"].isin(selectie_tijden))]
 
-# Huidige zin bijhouden
-if "huidige" not in st.session_state or st.session_state.huidige["Infinitief"] != werkwoord:
+# Kies nieuwe zin bij werkwoordwisseling
+if st.session_state.huidige is None or st.session_state.huidige["Infinitief"] != werkwoord:
     st.session_state.huidige = select_zin(filtered)
 
 st.subheader("Oefening")
 st.write(f"**Zin:** {st.session_state.huidige['Zin']}")
 st.write(f"**Tijd:** {st.session_state.huidige['Tijd']}")
 
-# Inputveld met aparte key
-antwoord = st.text_input("Vul de juiste vervoeging in:", value=st.session_state.antwoord_text, key="antwoord_input")
+# Input veld
+antwoord = st.text_input("Vul de juiste vervoeging in:", value=st.session_state.antwoord, key="input_veld")
 
-def volgende_zin():
+def controleer_en_volgende():
+    juist = antwoord.strip().lower() == st.session_state.huidige["Vervoeging"].lower()
     zin = st.session_state.huidige["Zin"]
-    juist = st.session_state.antwoord_text.strip().lower() == st.session_state.huidige["Vervoeging"].lower()
-    st.session_state.herhaling[zin] = st.session_state.herhaling.get(zin, 0) + (0 if juist else 1)
+
+    # Update score
     st.session_state.score["totaal"] += 1
     if juist:
         st.session_state.score["goed"] += 1
         st.success("✅ Goed!")
     else:
         st.error(f"❌ Fout! Het juiste antwoord is: {st.session_state.huidige['Vervoeging']}")
+
+    st.session_state.herhaling[zin] = st.session_state.herhaling.get(zin, 0) + (0 if juist else 1)
     st.session_state.score["log"].append((datetime.date.today(), int(juist), 1))
 
-    # Kies nieuwe zin
+    # Volgende zin selecteren
     st.session_state.huidige = select_zin(filtered)
-    # Reset inputveld
-    st.session_state.antwoord_text = ""
+
+    # Inputveld resetten
+    st.session_state.antwoord = ""
 
 if st.button("Controleer"):
-    st.session_state.antwoord_text = antwoord
-    volgende_zin()
+    st.session_state.antwoord = antwoord
+    controleer_en_volgende()
 
 if st.button("Hint"):
     st.info(f"Hint: {st.session_state.huidige['Vervoeging']}")
