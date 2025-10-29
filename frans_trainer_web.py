@@ -73,9 +73,14 @@ if isinstance(zin_data, pd.Series) and "Zin" in zin_data and pd.notna(zin_data["
     st.write(f"**Tijd:** {zin_data['Tijd']}")
 
     antwoord_input = st.empty()
-    antwoord = antwoord_input.text_input("Vul de juiste vervoeging in:")
+    antwoord = antwoord_input.text_input(
+        "Vul de juiste vervoeging in:",
+        value="" if st.session_state.get("reset_antwoord") else None,
+        key="antwoord",
+        on_change=lambda: st.session_state.update({"controleer_enter": True})
+    )
 
-    if st.button("Controleer"):
+    if st.button("Controleer") or st.session_state.get("controleer_enter"):
         st.session_state.score["totaal"] += 1
         juist = antwoord.strip().lower() == zin_data["Vervoeging"].lower()
         if juist:
@@ -87,11 +92,12 @@ if isinstance(zin_data, pd.Series) and "Zin" in zin_data and pd.notna(zin_data["
         st.session_state.herhaling[zin] = st.session_state.herhaling.get(zin, 0) + (0 if juist else 1)
         st.session_state.score["log"].append((datetime.date.today(), int(juist), 1))
         st.session_state.huidige_zin = selecteer_nieuwe_zin()
+        st.session_state.reset_antwoord = True
+        st.session_state.pop("controleer_enter", None)
         antwoord_input.text_input("Vul de juiste vervoeging in:", value="", key="resetveld")
 
     if st.button("Hint"):
         st.info(f"Hint: {zin_data['Vervoeging']}")
-        st.session_state.huidige_zin = selecteer_nieuwe_zin()
 
 # 📊 Score en voortgang
 st.write(f"**Score:** {st.session_state.score['goed']} / {st.session_state.score['totaal']}")
@@ -110,3 +116,7 @@ if st.button("Toon voortgangsgrafiek"):
         st.pyplot(fig)
     else:
         st.info("Nog geen voortgang beschikbaar.")
+
+# 🧹 Reset vlag wissen na render
+if "reset_antwoord" in st.session_state:
+    del st.session_state.reset_antwoord
