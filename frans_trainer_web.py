@@ -1,4 +1,3 @@
-
 import streamlit as st
 import pandas as pd
 import random
@@ -9,17 +8,19 @@ st.set_page_config(page_title='Franse Werkwoordentrainer', layout='centered')
 st.title('🇫🇷 Franse Werkwoordentrainer')
 
 @st.cache_data
-
 def load_data():
     try:
+        # Laad standaardbestand uit de repo
         df = pd.read_excel("Frans_werkwoorden.xlsx", engine="openpyxl")
         df = df.dropna()
         df.columns = ["Zin", "Vervoeging", "Tijd", "Infinitief"]
         return df
-    except Exception:
+    except Exception as e:
+        st.error(f"Kan standaardbestand niet laden: {e}")
         return pd.DataFrame()
 
-source = st.radio("Kies gegevensbron:", ["Ingebouwde zinnen", "Upload Excel/CSV"])
+# Gebruiker kan nog steeds eigen bestand uploaden
+source = st.radio("Kies gegevensbron:", ["Standaard zinnen", "Upload Excel/CSV"])
 
 df = pd.DataFrame()
 if source == "Upload Excel/CSV":
@@ -40,6 +41,7 @@ if df.empty:
     st.warning("Geen gegevens beschikbaar.")
     st.stop()
 
+# De rest van je script blijft hetzelfde
 infinitieven = sorted(df["Infinitief"].unique())
 werkwoord = st.selectbox("Kies werkwoord:", infinitieven)
 tijden = sorted(df[df["Infinitief"] == werkwoord]["Tijd"].unique())
