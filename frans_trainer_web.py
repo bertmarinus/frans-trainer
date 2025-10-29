@@ -3,19 +3,22 @@ import pandas as pd
 import datetime
 import matplotlib.pyplot as plt
 
+# Pagina-instellingen
 st.set_page_config(page_title='Franse Werkwoordentrainer', layout='centered')
 st.title('🇫🇷 Franse Werkwoordentrainer')
 
+# Data inladen
 @st.cache_data
 def load_data():
     try:
-        df = pd.read_excel("Frans_werkwoorden.xlsx", engine="openpyxl")
+        df = pd.read_excel("Frans_werkwoorden_futur100.xlsx", engine="openpyxl")
         df = df.dropna()
         df.columns = ["Zin", "Vervoeging", "Tijd", "Infinitief"]
         return df
     except Exception:
         return pd.DataFrame()
 
+# Gegevensbron kiezen
 source = st.radio("Kies gegevensbron:", ["Ingebouwde zinnen", "Upload Excel/CSV"])
 
 df = pd.DataFrame()
@@ -37,19 +40,17 @@ if df.empty:
     st.warning("Geen gegevens beschikbaar.")
     st.stop()
 
-# Session state initiëren
+# Initialiseer session_state
 if "score" not in st.session_state:
     st.session_state.score = {"goed": 0, "totaal": 0, "log": []}
 
 if "herhaling" not in st.session_state:
     st.session_state.herhaling = {}
 
-if "huidige" not in st.session_state:
-    st.session_state.huidige = None
+if "antwoord_text" not in st.session_state:
+    st.session_state.antwoord_text = ""
 
-if "antwoord" not in st.session_state:
-    st.session_state.antwoord = ""
-
+# Functie om zin te selecteren
 def select_zin(filtered_df):
     kandidaten = filtered_df.copy()
     kandidaten["HerhalingScore"] = kandidaten["Zin"].apply(lambda z: st.session_state.herhaling.get(z, 0))
@@ -65,47 +66,47 @@ selectie_tijden = st.multiselect("Kies tijden:", tijden, default=tijden)
 
 filtered = df[(df["Infinitief"] == werkwoord) & (df["Tijd"].isin(selectie_tijden))]
 
-# Kies nieuwe zin bij werkwoordwisseling
-if st.session_state.huidige is None or st.session_state.huidige["Infinitief"] != werkwoord:
+# Huidige zin bijhouden
+if "huidige" not in st.session_state or st.session_state.huidige["Infinitief"] != werkwoord:
     st.session_state.huidige = select_zin(filtered)
 
 st.subheader("Oefening")
 st.write(f"**Zin:** {st.session_state.huidige['Zin']}")
 st.write(f"**Tijd:** {st.session_state.huidige['Tijd']}")
 
-# Input veld
-antwoord = st.text_input("Vul de juiste vervoeging in:", value=st.session_state.antwoord, key="input_veld")
+# Inputveld
+antwoord = st.text_input("Vul de juiste vervoeging in:", value="", key="antwoord_input")
 
-def controleer_en_volgende():
-    juist = antwoord.strip().lower() == st.session_state.huidige["Vervoeging"].lower()
+# Functie voor volgende zin
+def volgende_zin():
     zin = st.session_state.huidige["Zin"]
-
-    # Update score
+    juist = antwoord.strip().lower() == st.session_state.huidige["Vervoeging"].lower()
+    st.session_state.herhaling[zin] = st.session_state.herhaling.get(zin, 0) + (0 if juist else 1)
     st.session_state.score["totaal"] += 1
     if juist:
         st.session_state.score["goed"] += 1
         st.success("✅ Goed!")
     else:
         st.error(f"❌ Fout! Het juiste antwoord is: {st.session_state.huidige['Vervoeging']}")
-
-    st.session_state.herhaling[zin] = st.session_state.herhaling.get(zin, 0) + (0 if juist else 1)
     st.session_state.score["log"].append((datetime.date.today(), int(juist), 1))
 
-    # Volgende zin selecteren
+    # Kies nieuwe zin
     st.session_state.huidige = select_zin(filtered)
+    # Reset inputveld
+    st.session_state.antwoord_text = ""
+    st.rerun()  # forceer update van het text_input veld
 
-    # Inputveld resetten
-    st.session_state.antwoord = ""
-
+# Knoppen
 if st.button("Controleer"):
-    st.session_state.antwoord = antwoord
-    controleer_en_volgende()
+    volgende_zin()
 
 if st.button("Hint"):
     st.info(f"Hint: {st.session_state.huidige['Vervoeging']}")
 
+# Score tonen
 st.write(f"**Score:** {st.session_state.score['goed']} / {st.session_state.score['totaal']}")
 
+# Voortgangsgrafiek
 if st.button("Toon voortgangsgrafiek"):
     log_df = pd.DataFrame(st.session_state.score["log"], columns=["Datum", "Goed", "Totaal"])
     if not log_df.empty:
