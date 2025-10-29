@@ -38,7 +38,7 @@ for key, default in {
     "score": {"goed": 0, "totaal": 0, "log": []},
     "herhaling": {},
     "huidige_zin": None,
-    "toon_hint": False
+    "laatste_hint": None
 }.items():
     if key not in st.session_state:
         st.session_state[key] = default
@@ -78,6 +78,7 @@ if isinstance(zin_data, pd.Series) and "Zin" in zin_data and pd.notna(zin_data["
 
     if st.button("Controleer") or st.session_state.get("controleer_enter"):
         antwoord = antwoord or ""
+        st.session_state.laatste_hint = zin_data["Vervoeging"]  # Hint vastleggen vóór verversen
         st.session_state.score["totaal"] += 1
         juist = antwoord.strip().lower() == zin_data["Vervoeging"].lower()
         if juist:
@@ -91,14 +92,13 @@ if isinstance(zin_data, pd.Series) and "Zin" in zin_data and pd.notna(zin_data["
         st.session_state.huidige_zin = selecteer_nieuwe_zin()
         st.session_state.reset_antwoord = True
         st.session_state.pop("controleer_enter", None)
-        st.session_state.toon_hint = False
         antwoord_input.text_input("Vul de juiste vervoeging in:", value="", key="resetveld")
 
     if st.button("Hint"):
-        st.session_state.toon_hint = True
+        st.session_state.laatste_hint = zin_data["Vervoeging"]
 
-    if st.session_state.toon_hint:
-        st.info(f"Hint: {zin_data['Vervoeging']}")
+    if st.session_state.laatste_hint:
+        st.info(f"Hint: {st.session_state.laatste_hint}")
 
 st.write(f"**Score:** {st.session_state.score['goed']} / {st.session_state.score['totaal']}")
 
@@ -118,4 +118,4 @@ if st.button("Toon voortgangsgrafiek"):
         st.info("Nog geen voortgang beschikbaar.")
 
 if "reset_antwoord" in st.session_state:
-    del st.session_state.reset_antwoord 
+    del st.session_state.reset_antwoord
