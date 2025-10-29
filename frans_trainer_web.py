@@ -35,10 +35,15 @@ if df.empty:
     st.warning("Geen gegevens beschikbaar.")
     st.stop()
 
-# 🧠 Session state
-for key in ["score", "herhaling", "huidige_zin", "antwoord_temp"]:
-    if key not in st.session_state:
-        st.session_state[key] = {"goed": 0, "totaal": 0, "log": []} if key == "score" else {}
+# 🧠 Session state initialiseren
+if "score" not in st.session_state:
+    st.session_state.score = {"goed": 0, "totaal": 0, "log": []}
+if "herhaling" not in st.session_state:
+    st.session_state.herhaling = {}
+if "huidige_zin" not in st.session_state:
+    st.session_state.huidige_zin = None
+if "antwoord_temp" not in st.session_state:
+    st.session_state.antwoord_temp = ""
 
 # 🔍 Selectie
 infinitieven = sorted(df["Infinitief"].unique())
@@ -51,44 +56,44 @@ filtered = df[(df["Infinitief"] == werkwoord) & (df["Tijd"].isin(geselecteerde_t
 # 🎯 Zin selecteren
 def selecteer_nieuwe_zin():
     kandidaten = filtered.copy()
-    kandidaten["HerhalingScore"] = kandidaten["Zin"].apply(lambda z: st.session_state["herhaling"].get(z, 0))
+    kandidaten["HerhalingScore"] = kandidaten["Zin"].apply(lambda z: st.session_state.herhaling.get(z, 0))
     kandidaten = kandidaten.sort_values("HerhalingScore")
     return kandidaten.iloc[0] if not kandidaten.empty else None
 
-if not st.session_state["huidige_zin"] or st.session_state["huidige_zin"].get("Infinitief") != werkwoord:
-    st.session_state["huidige_zin"] = selecteer_nieuwe_zin()
-    st.session_state["antwoord_temp"] = ""
+if st.session_state.huidige_zin is None or st.session_state.huidige_zin.get("Infinitief") != werkwoord:
+    st.session_state.huidige_zin = selecteer_nieuwe_zin()
+    st.session_state.antwoord_temp = ""
 
 # 📝 Oefening
-zin_data = st.session_state["huidige_zin"]
-if zin_data:
+zin_data = st.session_state.huidige_zin
+if isinstance(zin_data, pd.Series) and "Zin" in zin_data and pd.notna(zin_data["Zin"]):
     st.subheader("Oefening")
     st.write(f"**Zin:** {zin_data['Zin']}")
     st.write(f"**Tijd:** {zin_data['Tijd']}")
     antwoord = st.text_input("Vul de juiste vervoeging in:", value="", key="antwoord_temp")
 
     if st.button("Controleer"):
-        st.session_state["score"]["totaal"] += 1
+        st.session_state.score["totaal"] += 1
         juist = antwoord.strip().lower() == zin_data["Vervoeging"].lower()
         if juist:
-            st.session_state["score"]["goed"] += 1
+            st.session_state.score["goed"] += 1
             st.success("✅ Goed!")
         else:
             st.error(f"❌ Fout! Het juiste antwoord is: {zin_data['Vervoeging']}")
         zin = zin_data["Zin"]
-        st.session_state["herhaling"][zin] = st.session_state["herhaling"].get(zin, 0) + (0 if juist else 1)
-        st.session_state["score"]["log"].append((datetime.date.today(), int(juist), 1))
-        st.session_state["huidige_zin"] = selecteer_nieuwe_zin()
-        st.session_state["antwoord_temp"] = ""
+        st.session_state.herhaling[zin] = st.session_state.herhaling.get(zin, 0) + (0 if juist else 1)
+        st.session_state.score["log"].append((datetime.date.today(), int(juist), 1))
+        st.session_state.huidige_zin = selecteer_nieuwe_zin()
+        st.session_state.antwoord_temp = ""
 
     if st.button("Hint"):
         st.info(f"Hint: {zin_data['Vervoeging']}")
 
 # 📊 Score en voortgang
-st.write(f"**Score:** {st.session_state['score']['goed']} / {st.session_state['score']['totaal']}")
+st.write(f"**Score:** {st.session_state.score['goed']} / {st.session_state.score['totaal']}")
 
 if st.button("Toon voortgangsgrafiek"):
-    log_df = pd.DataFrame(st.session_state["score"]["log"], columns=["Datum", "Goed", "Totaal"])
+    log_df = pd.DataFrame(st.session_state.score["log"], columns=["Datum", "Goed", "Totaal"])
     if not log_df.empty:
         grafiek = log_df.groupby("Datum").sum()
         grafiek["Percentage"] = grafiek["Goed"] / grafiek["Totaal"] * 100
