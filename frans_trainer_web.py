@@ -118,4 +118,4 @@ if st.button("Toon voortgangsgrafiek"):
         st.info("Nog geen voortgang beschikbaar.")
 
 if "reset_antwoord" in st.session_state:
-    del st.session_state.reset_antwoord
+    del st.session_state.reset_antwoord 
