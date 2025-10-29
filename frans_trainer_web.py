@@ -36,14 +36,14 @@ if df.empty:
     st.stop()
 
 # 🧠 Session state initialiseren
-if "score" not in st.session_state:
-    st.session_state.score = {"goed": 0, "totaal": 0, "log": []}
-if "herhaling" not in st.session_state:
-    st.session_state.herhaling = {}
-if "huidige_zin" not in st.session_state:
-    st.session_state.huidige_zin = None
-if "antwoord_temp" not in st.session_state:
-    st.session_state.antwoord_temp = ""
+for key, default in {
+    "score": {"goed": 0, "totaal": 0, "log": []},
+    "herhaling": {},
+    "huidige_zin": None,
+    "antwoord_temp": ""
+}.items():
+    if key not in st.session_state:
+        st.session_state[key] = default
 
 # 🔍 Selectie
 infinitieven = sorted(df["Infinitief"].unique())
@@ -57,6 +57,9 @@ filtered = df[(df["Infinitief"] == werkwoord) & (df["Tijd"].isin(geselecteerde_t
 def selecteer_nieuwe_zin():
     kandidaten = filtered.copy()
     kandidaten["HerhalingScore"] = kandidaten["Zin"].apply(lambda z: st.session_state.herhaling.get(z, 0))
+    if st.session_state.huidige_zin is not None:
+        vorige_zin = st.session_state.huidige_zin["Zin"]
+        kandidaten = kandidaten[kandidaten["Zin"] != vorige_zin]
     kandidaten = kandidaten.sort_values("HerhalingScore")
     return kandidaten.iloc[0] if not kandidaten.empty else None
 
@@ -70,7 +73,7 @@ if isinstance(zin_data, pd.Series) and "Zin" in zin_data and pd.notna(zin_data["
     st.subheader("Oefening")
     st.write(f"**Zin:** {zin_data['Zin']}")
     st.write(f"**Tijd:** {zin_data['Tijd']}")
-    antwoord = st.text_input("Vul de juiste vervoeging in:", value="", key="antwoord_temp")
+    antwoord = st.text_input("Vul de juiste vervoeging in:", value=st.session_state.antwoord_temp, key="antwoord_temp")
 
     if st.button("Controleer"):
         st.session_state.score["totaal"] += 1
