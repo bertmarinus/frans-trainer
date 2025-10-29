@@ -45,6 +45,9 @@ if "score" not in st.session_state:
 if "herhaling" not in st.session_state:
     st.session_state.herhaling = {}
 
+if "antwoord_text" not in st.session_state:
+    st.session_state.antwoord_text = ""
+
 def select_zin(filtered_df):
     kandidaten = filtered_df.copy()
     kandidaten["HerhalingScore"] = kandidaten["Zin"].apply(lambda z: st.session_state.herhaling.get(z, 0))
@@ -68,32 +71,29 @@ st.subheader("Oefening")
 st.write(f"**Zin:** {st.session_state.huidige['Zin']}")
 st.write(f"**Tijd:** {st.session_state.huidige['Tijd']}")
 
-# Inputveld met key "antwoord"
-if "antwoord" not in st.session_state:
-    st.session_state.antwoord = ""
-
-antwoord = st.text_input("Vul de juiste vervoeging in:", value=st.session_state.antwoord, key="antwoord")
+# Inputveld met aparte key
+antwoord = st.text_input("Vul de juiste vervoeging in:", value=st.session_state.antwoord_text, key="antwoord_input")
 
 def volgende_zin():
-    # Update herhaling en log
     zin = st.session_state.huidige["Zin"]
-    juist = st.session_state.antwoord.strip().lower() == st.session_state.huidige["Vervoeging"].lower()
+    juist = st.session_state.antwoord_text.strip().lower() == st.session_state.huidige["Vervoeging"].lower()
     st.session_state.herhaling[zin] = st.session_state.herhaling.get(zin, 0) + (0 if juist else 1)
     st.session_state.score["totaal"] += 1
     if juist:
         st.session_state.score["goed"] += 1
         st.success("✅ Goed!")
     else:
-        st.session_state.score["totaal"] += 0
         st.error(f"❌ Fout! Het juiste antwoord is: {st.session_state.huidige['Vervoeging']}")
     st.session_state.score["log"].append((datetime.date.today(), int(juist), 1))
 
     # Kies nieuwe zin
     st.session_state.huidige = select_zin(filtered)
     # Reset inputveld
-    st.session_state.antwoord = ""
+    st.session_state.antwoord_text = ""
+    st.experimental_rerun()  # forceer update van het text_input veld
 
 if st.button("Controleer"):
+    st.session_state.antwoord_text = antwoord
     volgende_zin()
 
 if st.button("Hint"):
