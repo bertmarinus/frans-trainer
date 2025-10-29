@@ -16,6 +16,7 @@ def load_data():
     except Exception:
         return pd.DataFrame()
 
+# Kies gegevensbron
 source = st.radio("Kies gegevensbron:", ["Ingebouwde zinnen", "Upload Excel/CSV"])
 
 df = pd.DataFrame()
@@ -84,31 +85,46 @@ st.subheader("Oefening")
 st.write(f"**Zin:** {st.session_state.huidige['Zin']}")
 st.write(f"**Tijd:** {st.session_state.huidige['Tijd']}")
 
-# Input met key gebaseerd op huidige zin (zorgt voor automatisch reset)
-antwoord = st.text_input("Vul de juiste vervoeging in:", key=f"antwoord_{st.session_state.huidige['Zin']}")
+# Input met unieke key gebaseerd op huidige zin
+key_antwoord = f"antwoord_{st.session_state.huidige['Zin']}"
+if key_antwoord not in st.session_state:
+    st.session_state[key_antwoord] = ""
 
-# Knoppen
+antwoord = st.text_input("Vul de juiste vervoeging in:", value=st.session_state[key_antwoord], key=key_antwoord)
+
+# Controleer knop
 if st.button("Controleer"):
     st.session_state.score["totaal"] += 1
     juist = antwoord.strip().lower() == st.session_state.huidige["Vervoeging"].lower()
+    
     if juist:
         st.session_state.score["goed"] += 1
         st.success("✅ Goed!")
     else:
         st.error(f"❌ Fout! Het juiste antwoord is: {st.session_state.huidige['Vervoeging']}")
     
+    # Update herhaling en log
     zin = st.session_state.huidige["Zin"]
     st.session_state.herhaling[zin] = st.session_state.herhaling.get(zin, 0) + (0 if juist else 1)
     st.session_state.score["log"].append((datetime.date.today(), int(juist), 1))
     
+    # Reset invoerveld
+    st.session_state[key_antwoord] = ""
+    
     # Nieuwe zin selecteren
     st.session_state.huidige = select_zin()
+    
+    # Focus direct op de nieuwe zin
+    st.experimental_rerun()
 
+# Hint knop
 if st.button("Hint"):
     st.info(f"Hint: {st.session_state.huidige['Vervoeging']}")
 
+# Score
 st.write(f"**Score:** {st.session_state.score['goed']} / {st.session_state.score['totaal']}")
 
+# Voortgangsgrafiek
 if st.button("Toon voortgangsgrafiek"):
     log_df = pd.DataFrame(st.session_state.score["log"], columns=["Datum", "Goed", "Totaal"])
     if not log_df.empty:
