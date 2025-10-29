@@ -90,7 +90,6 @@ def volgende_zin():
     st.session_state.huidige = select_zin(filtered)
     # Reset inputveld
     st.session_state.antwoord_text = ""
-    st.experimental_rerun()  # forceer update van het text_input veld
 
 if st.button("Controleer"):
     st.session_state.antwoord_text = antwoord
