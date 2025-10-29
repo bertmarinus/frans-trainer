@@ -16,110 +16,74 @@ def load_data():
     except Exception:
         return pd.DataFrame()
 
-# Kies gegevensbron
-source = st.radio("Kies gegevensbron:", ["Ingebouwde zinnen", "Upload Excel/CSV"])
-
-df = pd.DataFrame()
-if source == "Upload Excel/CSV":
-    uploaded_file = st.file_uploader("Upload je bestand", type=["xlsx", "csv"])
-    if uploaded_file:
-        try:
-            if uploaded_file.name.endswith(".csv"):
-                df = pd.read_csv(uploaded_file)
-            else:
-                df = pd.read_excel(uploaded_file, engine="openpyxl")
-            df.columns = ["Zin", "Vervoeging", "Tijd", "Infinitief"]
-        except Exception as e:
-            st.error(f"Fout bij inlezen: {e}")
-else:
-    df = load_data()
-
+# Data laden
+df = load_data()
 if df.empty:
     st.warning("Geen gegevens beschikbaar.")
     st.stop()
 
-# Session state initialisatie
+# Session state initiëren
 if "score" not in st.session_state:
     st.session_state.score = {"goed": 0, "totaal": 0, "log": []}
-
 if "herhaling" not in st.session_state:
     st.session_state.herhaling = {}
-
-if "bezochte_zinnen" not in st.session_state:
-    st.session_state.bezochte_zinnen = set()
-
 if "huidige" not in st.session_state:
     st.session_state.huidige = None
-
 if "antwoord" not in st.session_state:
     st.session_state.antwoord = ""
 
-# Dropdowns
+# Functie om zin te selecteren
+def select_zin(filtered_df):
+    kandidaten = filtered_df.copy()
+    kandidaten["HerhalingScore"] = kandidaten["Zin"].apply(lambda z: st.session_state.herhaling.get(z, 0))
+    kandidaten = kandidaten.sort_values("HerhalingScore")
+    return kandidaten.iloc[0] if not kandidaten.empty else None
+
+# Dropdown werkwoorden en tijden
 infinitieven = sorted(df["Infinitief"].unique())
-werkwoord = st.selectbox("Kies werkwoord:", infinitieven, index=0)
+werkwoord = st.selectbox("Kies werkwoord:", infinitieven)
 
-# Reset zin als ander werkwoord wordt gekozen
-if "vorig_werkwoord" not in st.session_state or st.session_state.vorig_werkwoord != werkwoord:
-    st.session_state.bezochte_zinnen = set()
-    st.session_state.huidige = None
-    st.session_state.antwoord = ""
-    st.session_state.vorig_werkwoord = werkwoord
-
-# Filteren van tijden
 tijden = sorted(df[df["Infinitief"] == werkwoord]["Tijd"].unique())
 selectie_tijden = st.multiselect("Kies tijden:", tijden, default=tijden)
+
 filtered = df[(df["Infinitief"] == werkwoord) & (df["Tijd"].isin(selectie_tijden))]
 
-if filtered.empty:
-    st.warning("Geen zinnen beschikbaar voor deze selectie.")
+# Als er geen huidige zin is of werkwoord/tijden gewijzigd -> selecteer nieuwe zin
+if st.session_state.huidige is None or st.session_state.huidige["Infinitief"] != werkwoord or st.session_state.huidige["Tijd"] not in selectie_tijden:
+    st.session_state.huidige = select_zin(filtered)
+    st.session_state.antwoord = ""  # Reset inputveld
+
+# Oefening tonen
+st.subheader("Oefening")
+if st.session_state.huidige is not None:
+    st.write(f"**Zin:** {st.session_state.huidige['Zin']}")
+    st.write(f"**Tijd:** {st.session_state.huidige['Tijd']}")
+else:
+    st.info("Geen zinnen beschikbaar voor deze selectie.")
     st.stop()
 
-# Functie om volgende zin te selecteren
-def select_zin():
-    kandidaten = filtered.copy()
-    kandidaten["HerhalingScore"] = kandidaten["Zin"].apply(lambda z: st.session_state.herhaling.get(z, 0))
-    overgebleven = kandidaten[~kandidaten["Zin"].isin(st.session_state.bezochte_zinnen)]
-    if overgebleven.empty:
-        st.session_state.bezochte_zinnen = set()
-        overgebleven = kandidaten.copy()
-        overgebleven["HerhalingScore"] = overgebleven["Zin"].apply(lambda z: st.session_state.herhaling.get(z, 0))
-    overgebleven = overgebleven.sort_values("HerhalingScore")
-    volgende = overgebleven.iloc[0]
-    st.session_state.bezochte_zinnen.add(volgende["Zin"])
-    return volgende
+# Input en controle
+antwoord = st.text_input("Vul de juiste vervoeging in:", key="antwoord")
 
-# Zorg dat er altijd een huidige zin is
-if st.session_state.huidige is None:
-    st.session_state.huidige = select_zin()
-
-# Oefening
-st.subheader("Oefening")
-st.write(f"**Zin:** {st.session_state.huidige['Zin']}")
-st.write(f"**Tijd:** {st.session_state.huidige['Tijd']}")
-
-# Input veld
-antwoord = st.text_input("Vul de juiste vervoeging in:", value=st.session_state.antwoord, key="antwoord")
-
-# Controleer knop
-controleer = st.button("Controleer")
-if controleer:
+if st.button("Controleer"):
+    juist = st.session_state.antwoord.strip().lower() == st.session_state.huidige["Vervoeging"].lower()
     st.session_state.score["totaal"] += 1
-    juist = antwoord.strip().lower() == st.session_state.huidige["Vervoeging"].lower()
     if juist:
         st.session_state.score["goed"] += 1
         st.success("✅ Goed!")
     else:
         st.error(f"❌ Fout! Het juiste antwoord is: {st.session_state.huidige['Vervoeging']}")
-    
+
+    # Update herhaling en log
     zin = st.session_state.huidige["Zin"]
     st.session_state.herhaling[zin] = st.session_state.herhaling.get(zin, 0) + (0 if juist else 1)
     st.session_state.score["log"].append((datetime.date.today(), int(juist), 1))
 
-    # Reset input en selecteer nieuwe zin
+    # Volgende zin en input resetten
+    st.session_state.huidige = select_zin(filtered)
     st.session_state.antwoord = ""
-    st.session_state.huidige = select_zin()
 
-# Hint knop
+# Hint
 if st.button("Hint"):
     st.info(f"Hint: {st.session_state.huidige['Vervoeging']}")
 
