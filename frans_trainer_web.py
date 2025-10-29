@@ -38,15 +38,7 @@ if df.empty:
     st.warning("Geen gegevens beschikbaar.")
     st.stop()
 
-# Dropdowns
-infinitieven = sorted(df["Infinitief"].unique())
-werkwoord = st.selectbox("Kies werkwoord:", infinitieven)
-tijden = sorted(df[df["Infinitief"] == werkwoord]["Tijd"].unique())
-selectie_tijden = st.multiselect("Kies tijden:", tijden, default=tijden)
-
-filtered = df[(df["Infinitief"] == werkwoord) & (df["Tijd"].isin(selectie_tijden))]
-
-# Session state
+# Session state initialisatie
 if "score" not in st.session_state:
     st.session_state.score = {"goed": 0, "totaal": 0, "log": []}
 
@@ -58,6 +50,29 @@ if "bezochte_zinnen" not in st.session_state:
 
 if "huidige" not in st.session_state:
     st.session_state.huidige = None
+
+if "antwoord" not in st.session_state:
+    st.session_state.antwoord = ""
+
+# Dropdowns
+infinitieven = sorted(df["Infinitief"].unique())
+werkwoord = st.selectbox("Kies werkwoord:", infinitieven, index=0)
+
+# Reset zin als ander werkwoord wordt gekozen
+if "vorig_werkwoord" not in st.session_state or st.session_state.vorig_werkwoord != werkwoord:
+    st.session_state.bezochte_zinnen = set()
+    st.session_state.huidige = None
+    st.session_state.antwoord = ""
+    st.session_state.vorig_werkwoord = werkwoord
+
+# Filteren van tijden
+tijden = sorted(df[df["Infinitief"] == werkwoord]["Tijd"].unique())
+selectie_tijden = st.multiselect("Kies tijden:", tijden, default=tijden)
+filtered = df[(df["Infinitief"] == werkwoord) & (df["Tijd"].isin(selectie_tijden))]
+
+if filtered.empty:
+    st.warning("Geen zinnen beschikbaar voor deze selectie.")
+    st.stop()
 
 # Functie om volgende zin te selecteren
 def select_zin():
@@ -73,6 +88,7 @@ def select_zin():
     st.session_state.bezochte_zinnen.add(volgende["Zin"])
     return volgende
 
+# Zorg dat er altijd een huidige zin is
 if st.session_state.huidige is None:
     st.session_state.huidige = select_zin()
 
@@ -82,9 +98,6 @@ st.write(f"**Zin:** {st.session_state.huidige['Zin']}")
 st.write(f"**Tijd:** {st.session_state.huidige['Tijd']}")
 
 # Input veld
-if "antwoord" not in st.session_state:
-    st.session_state.antwoord = ""
-
 antwoord = st.text_input("Vul de juiste vervoeging in:", value=st.session_state.antwoord, key="antwoord")
 
 # Controleer knop
