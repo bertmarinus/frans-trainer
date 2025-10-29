@@ -119,4 +119,4 @@ if st.button("Toon voortgangsgrafiek"):
 
 # 🧹 Reset vlag wissen na render
 if "reset_antwoord" in st.session_state:
-    del st.session_state.reset_antwoord
+    del st.session_state.reset_antwoord 
