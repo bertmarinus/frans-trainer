@@ -3,6 +3,7 @@ import pandas as pd
 import random
 import datetime
 import matplotlib.pyplot as plt
+import pyttsx3
 
 st.set_page_config(page_title="🇫🇷 Franse Werkwoordentrainer", layout="centered")
 st.title("🇫🇷 Franse Werkwoordentrainer")
@@ -65,6 +66,15 @@ def selecteer_nieuwe_zin():
 if st.session_state.huidige_zin is None or st.session_state.huidige_zin.get("Infinitief") != werkwoord:
     st.session_state.huidige_zin = selecteer_nieuwe_zin()
 
+# 🔊 Audio-engine
+def spreek_feedback(tekst):
+    try:
+        engine = pyttsx3.init()
+        engine.say(tekst)
+        engine.runAndWait()
+    except:
+        pass  # Geen audio in Streamlit Cloud
+
 # 📝 Oefening
 zin_data = st.session_state.huidige_zin
 if isinstance(zin_data, pd.Series) and "Zin" in zin_data and pd.notna(zin_data["Zin"]):
@@ -84,8 +94,10 @@ if isinstance(zin_data, pd.Series) and "Zin" in zin_data and pd.notna(zin_data["
         if juist:
             st.session_state.score["goed"] += 1
             st.success("✅ Goed!")
+            spreek_feedback("Goed!")
         else:
             st.error(f"❌ Fout! Het juiste antwoord is: {zin_data['Vervoeging']}")
+            spreek_feedback("Fout!")
         zin = zin_data["Zin"]
         st.session_state.herhaling[zin] = st.session_state.herhaling.get(zin, 0) + (0 if juist else 1)
         st.session_state.score["log"].append((datetime.date.today(), int(juist), 1))
