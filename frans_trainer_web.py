@@ -88,14 +88,14 @@ if isinstance(zin_data, pd.Series) and "Zin" in zin_data and pd.notna(zin_data["
         st.session_state.huidige_zin = selecteer_willekeurige_zin()
         st.session_state.reset_antwoord = True
         st.session_state.pop("controleer_enter", None)
-        st.session_state.toon_hint = False
+        st.session_state.toon_hint = False  # ✅ Hint wissen na controle
         antwoord_input.text_input("Vul de juiste vervoeging in:", value="", key="resetveld")
 
     if st.button("Hint"):
-        st.session_state.toon_hint = True
+        st.session_state.toon_hint = True  # ✅ Hint tonen zonder zin te verversen
 
     if st.session_state.toon_hint:
-        st.info(f"Hint: {zin_data['Vervoeging']}")
+        st.info(f"Hint: {st.session_state.huidige_zin['Vervoeging']}")  # ✅ Hint komt uit juiste zin
 
 st.write(f"**Score:** {st.session_state.score['goed']} / {st.session_state.score['totaal']}")
 
