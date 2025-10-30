@@ -7,7 +7,7 @@ from datetime import datetime
 from pathlib import Path
 from typing import List, Tuple, Optional
 import streamlit.components.v1 as components
-import time
+import time  # ✅ toegevoegd voor vertraging
 
 st.set_page_config(page_title="Franse Werkwoorden Trainer", layout="centered", initial_sidebar_state="expanded")
 
@@ -210,16 +210,33 @@ else:
 
         # ✅ Unieke key per zin
         zin_key = f"answer_{hash(current[0])}"
-        answer = st.text_input(
-            "Vervoeging invullen", key=zin_key, placeholder="Typ hier de vervoeging", 
-            on_change=lambda: st.session_state._submit_pressed := True
-        )
-        if not hasattr(st.session_state, "_submit_pressed"):
+
+        # Functie om Enter te registreren
+        def submit_pressed():
+            st.session_state._submit_pressed = True
+
+        if "_submit_pressed" not in st.session_state:
             st.session_state._submit_pressed = False
+
+        answer = st.text_input(
+            "Vervoeging invullen", 
+            key=zin_key, 
+            placeholder="Typ hier de vervoeging", 
+            on_change=submit_pressed
+        )
+
+        # ✅ Auto-focus
+        components.html("""
+        <script>
+            const input = document.querySelector('input[type="text"]');
+            if(input){ input.focus(); }
+        </script>
+        """, height=0)
 
         cols = st.columns([1, 1, 1])
         with cols[0]:
             if st.button("Controleer") or st.session_state._submit_pressed:
+                st.session_state._submit_pressed = False
                 user_ans = (answer or "").strip().lower()
                 st.session_state.score_total += 1
                 if user_ans == correct_answer.strip().lower():
@@ -228,22 +245,30 @@ else:
                     st.success("✔️ Goed!")
                 else:
                     record_attempt(current, False)
-                    st.error(f"❌ Fout. Correct: **{correct_answer}**")
+                    st.error(f"✖️ Fout — juiste antwoord: {correct_answer}")
+
+                # ✅ Wacht 2 seconden voordat de volgende zin komt
+                time.sleep(2)
+
                 choose_next_item()
-                st.session_state._submit_pressed = False
+                st.experimental_rerun()
+
         with cols[1]:
             if st.button("Hint"):
                 st.info(f"Hint: {correct_answer}")
+
         with cols[2]:
-            if st.button("Volgende"):
+            if st.button("Overslaan"):
+                record_attempt(current, False)
                 choose_next_item()
+                st.experimental_rerun()
 
-st.subheader("Score")
-st.write(f"{st.session_state.score_good} / {st.session_state.score_total} correct")
+        st.markdown(f"**Score:** {st.session_state.score_good} / {st.session_state.score_total}")
 
-# Eenvoudige grafiek
-if st.session_state.history:
-    df_hist = pd.DataFrame(st.session_state.history)
-    df_hist["datum"] = df_hist["timestamp"].dt.date
-    score_per_day = df_hist.groupby("datum")["correct"].mean() * 100
-    st.line_chart(score_per_day)
+        # ✅ Score grafiek
+        if st.session_state.history:
+            df_hist = pd.DataFrame(st.session_state.history)
+            df_hist["datum"] = df_hist["timestamp"].dt.date
+            df_score = df_hist.groupby("datum")["correct"].agg(["sum", "count"]).reset_index()
+            df_score["percentage"] = 100 * df_score["sum"] / df_score["count"]
+            st.line_chart(df_score.set_index("datum")["percentage"])
