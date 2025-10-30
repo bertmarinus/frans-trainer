@@ -264,7 +264,7 @@ with col1:
                         pass
 
                     # Herlaad de app meteen zodat de volgende zin zichtbaar is
-                    st.experimental_rerun()
+                    st.rerun()
 
             with cols[1]:
                 if st.button("Hint"):
