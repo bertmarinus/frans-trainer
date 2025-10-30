@@ -133,8 +133,9 @@ def init_session_state():
     st.session_state.setdefault("score_good", 0)
     st.session_state.setdefault("score_total", 0)
     st.session_state.setdefault("history", [])
-    st.session_state.setdefault("meta", {})  # key -> {errors, last}
+    st.session_state.setdefault("meta", {})
     st.session_state.setdefault("answer_input", "")
+    st.session_state.setdefault("clear_input", False)
 
 init_session_state()
 
@@ -205,16 +206,6 @@ ensure_meta_for_items(st.session_state.filtered)
 st.title("Franse Werkwoorden Trainer")
 st.markdown("Vul de ontbrekende vervoeging in. De app houdt score bij en past spaced repetition toe zodat moeilijkere zinnen vaker terugkomen.")
 
-with st.expander("Handleiding"):
-    st.markdown("""
-- Kies een databron: standaardbestand, ingebouwde voorbeelden of upload een Excel/CSV-bestand (4 kolommen: Zin, Vervoeging, Tijd, Infinitief).
-- Kies een werkwoord (infinitief) en één of meerdere tijden (of 'Alle tijden').
-- Typ de vervoeging in het invulveld en klik 'Controleer'.
-- Gebruik 'Hint' om het juiste antwoord te zien.
-- De score wordt live bijgehouden. De grafiek toont voortgang per dag.
-- Spaced repetition: zinnen die vaker fout worden beantwoord of langer niet geoefend zijn, krijgen voorrang.
-""")
-
 col1, col2 = st.columns([3, 1])
 
 with col1:
@@ -234,9 +225,16 @@ with col1:
             st.markdown(f"**Zin**  \n{zin_text}")
             st.markdown(f"_Tijd: {tijd_label}_")
 
+            # Tekstveld
             answer = st.text_input("Vervoeging invullen", key="answer_input", placeholder="Typ hier de vervoeging")
 
-            # focus automatisch in tekstveld
+            # Leeg veld na controle
+            if st.session_state.clear_input:
+                st.session_state.answer_input = ""
+                st.session_state.clear_input = False
+                st.rerun()
+
+            # Automatische focus
             components.html(
                 """
                 <script>
@@ -261,7 +259,7 @@ with col1:
                         st.error(f"✖️ Fout — juiste antwoord: {correct_answer}")
 
                     choose_next_item()
-                    st.session_state.answer_input = ""  # leeg veld
+                    st.session_state.clear_input = True
                     st.rerun()
 
             with cols[1]:
@@ -306,5 +304,4 @@ else:
     st.info("Nog geen oefenpogingen geregistreerd.")
 
 st.markdown("---")
-st.markdown("Tip: Voor het beste effect oefen dagelijks. De spaced repetition zorgt dat moeilijkheden terugkomen.")
-st.caption("Opmerking: Focus automatisch instellen in Streamlit is beperkt. Dit script probeert het veld na elke beurt te focussen.")
+st.caption("Tip: veld leegt zich automatisch en cursor springt terug naar het invoerveld.")
