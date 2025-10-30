@@ -9,6 +9,7 @@ import math
 from datetime import datetime
 from pathlib import Path
 from typing import List, Tuple, Optional
+import streamlit.components.v1 as components
 
 st.set_page_config(page_title="Franse Werkwoorden Trainer", layout="centered", initial_sidebar_state="expanded")
 
@@ -133,7 +134,6 @@ def init_session_state():
     st.session_state.setdefault("score_total", 0)
     st.session_state.setdefault("history", [])
     st.session_state.setdefault("meta", {})  # key -> {errors, last}
-    # Ensure input key exists to avoid StreamlitAPIException later
     st.session_state.setdefault("answer_input", "")
 
 init_session_state()
@@ -222,7 +222,6 @@ with col1:
     if not st.session_state.filtered:
         st.warning("Er zijn geen zinnen voor deze selectie. Probeer een ander werkwoord of andere tijden.")
     else:
-        # Ensure current item present and valid
         if st.session_state.current is None or st.session_state.current not in st.session_state.filtered:
             choose_next_item()
 
@@ -235,10 +234,19 @@ with col1:
             st.markdown(f"**Zin**  \n{zin_text}")
             st.markdown(f"_Tijd: {tijd_label}_")
 
-            # Text input bound to session_state to keep value across reruns
             answer = st.text_input("Vervoeging invullen", key="answer_input", placeholder="Typ hier de vervoeging")
 
-            # Buttons: Controleer, Hint, Reset score
+            # focus automatisch in tekstveld
+            components.html(
+                """
+                <script>
+                    const input = window.parent.document.querySelector('input[data-testid="stTextInput"]');
+                    if (input) { input.focus(); }
+                </script>
+                """,
+                height=0,
+            )
+
             cols = st.columns([1, 1, 1])
             with cols[0]:
                 if st.button("Controleer"):
@@ -252,18 +260,8 @@ with col1:
                         record_attempt(current, False)
                         st.error(f"✖️ Fout — juiste antwoord: {correct_answer}")
 
-                    # kies het volgende item
                     choose_next_item()
-
-                    # Probeer het invoerveld veilig te legen en daarna de app te herstarten.
-                    try:
-                        # attribuut-toegang is iets betrouwbaarder dan dict-assign in sommige Streamlit versies
-                        st.session_state.answer_input = ""
-                    except Exception:
-                        # Als dat faalt, negeer en forceer in ieder geval een rerun zodat de volgende zin in beeld komt
-                        pass
-
-                    # Herlaad de app meteen zodat de volgende zin zichtbaar is
+                    st.session_state.answer_input = ""  # leeg veld
                     st.rerun()
 
             with cols[1]:
@@ -309,4 +307,4 @@ else:
 
 st.markdown("---")
 st.markdown("Tip: Voor het beste effect oefen dagelijks. De spaced repetition zorgt dat moeilijkheden terugkomen.")
-st.caption("Opmerking: Focus automatisch instellen in Streamlit is beperkt. Typ in het invulveld na het wisselen van zin.")
+st.caption("Opmerking: Focus automatisch instellen in Streamlit is beperkt. Dit script probeert het veld na elke beurt te focussen.")
