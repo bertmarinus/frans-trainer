@@ -185,7 +185,11 @@ if not infinitieven:
     st.stop()
 
 # Verb and tijden selection
-verb = st.sidebar.selectbox("Kies werkwoord (infinitief)", options=infinitieven, index=0 if st.session_state.verb == "" else (infinitieven.index(st.session_state.verb) if st.session_state.verb in infinitieven else 0))
+verb = st.sidebar.selectbox(
+    "Kies werkwoord (infinitief)",
+    options=infinitieven,
+    index=0 if st.session_state.verb == "" else (infinitieven.index(st.session_state.verb) if st.session_state.verb in infinitieven else 0)
+)
 
 all_tijden_set = sorted(set(row[2] for row in data if row[3] == verb), key=lambda s: s.lower())
 tijd_order = ["présent", "imparfait", "passé composé", "futur"]
@@ -257,14 +261,12 @@ with col1:
 
                     # Probeer het invoerveld veilig te legen en daarna de app te herstarten.
                     try:
-                        # attribuut-toegang is iets betrouwbaarder dan dict-assign in sommige Streamlit versies
                         st.session_state.answer_input = ""
                     except Exception:
-                        # Als dat faalt, negeer en forceer in ieder geval een rerun zodat de volgende zin in beeld komt
                         pass
 
                     # Herlaad de app meteen zodat de volgende zin zichtbaar is
-                    st.rerun()
+                    st.experimental_rerun()
 
             with cols[1]:
                 if st.button("Hint"):
