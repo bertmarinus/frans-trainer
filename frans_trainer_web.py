@@ -207,9 +207,22 @@ else:
         st.markdown(f"**Zin** \n{zin_text}")
         st.markdown(f"_Tijd: {tijd_label}_")
 
-        # ✅ FORM voor automatische Enter-submit
+        # ✅ FORM voor Enter + autofocus na elke vraag
         with st.form(key="answer_form", clear_on_submit=True):
-            answer = st.text_input("Vervoeging invullen", key=f"answer_{hash(current[0])}", placeholder="Typ hier de vervoeging")
+            answer = st.text_input(
+                "Vervoeging invullen",
+                key=f"answer_{hash(current[0])}",
+                placeholder="Typ hier de vervoeging"
+            )
+
+            # focus na elke nieuwe vraag
+            st.components.v1.html("""
+<script>
+const input = window.parent.document.querySelector('input[type="text"]');
+if (input) { input.focus(); }
+</script>
+""", height=0)
+
             cols = st.columns([1, 1, 1])
             with cols[0]:
                 submitted = st.form_submit_button("Controleer")
@@ -275,4 +288,4 @@ else:
 
 st.markdown("---")
 st.markdown("Tip: Voor het beste effect oefen dagelijks. De spaced repetition zorgt dat moeilijkheden terugkomen.")
-st.caption("Opmerking: Door het gebruik van formulieren kun je nu met Enter direct controleren.")
+st.caption("De cursor springt nu automatisch terug in het invulveld na elke nieuwe zin.")
