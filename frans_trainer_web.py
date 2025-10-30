@@ -6,8 +6,7 @@ import math
 from datetime import datetime
 from pathlib import Path
 from typing import List, Tuple, Optional
-import streamlit.components.v1 as components
-import time  # ✅ toegevoegd voor vertraging
+import time  # ✅ voor vertraging
 
 st.set_page_config(page_title="Franse Werkwoorden Trainer", layout="centered", initial_sidebar_state="expanded")
 
@@ -188,7 +187,7 @@ with st.expander("Handleiding"):
     st.markdown("""
 - Kies een databron: standaardbestand, ingebouwde voorbeelden of upload een Excel/CSV-bestand (4 kolommen: Zin, Vervoeging, Tijd, Infinitief).
 - Kies een werkwoord (infinitief) en één of meerdere tijden (of 'Alle tijden').
-- Typ de vervoeging in het invulveld en klik 'Controleer'.
+- Typ de vervoeging in het invulveld en druk op Enter of klik 'Controleer'.
 - Gebruik 'Hint' om het juiste antwoord te zien.
 - De score wordt live bijgehouden. De grafiek toont voortgang per dag.
 - Spaced repetition: zinnen die vaker fout worden beantwoord of langer niet geoefend zijn, krijgen voorrang.
@@ -208,62 +207,39 @@ else:
         st.markdown(f"**Zin** \n{zin_text}")
         st.markdown(f"_Tijd: {tijd_label}_")
 
-        # ✅ Unieke key per zin
-        zin_key = f"answer_{hash(current[0])}"
-        answer = st.text_input("Vervoeging invullen", key=zin_key, placeholder="Typ hier de vervoeging")
+        # ✅ FORM voor automatische Enter-submit
+        with st.form(key="answer_form", clear_on_submit=True):
+            answer = st.text_input("Vervoeging invullen", key=f"answer_{hash(current[0])}", placeholder="Typ hier de vervoeging")
+            cols = st.columns([1, 1, 1])
+            with cols[0]:
+                submitted = st.form_submit_button("Controleer")
+            with cols[1]:
+                hint_clicked = st.form_submit_button("Hint")
+            with cols[2]:
+                reset_clicked = st.form_submit_button("Reset score")
 
-        # ✅ Auto-focus
-        components.html("""
-<script>
-document.addEventListener("DOMContentLoaded", function() {
-  const input = window.parent.document.querySelector('input[type="text"]');
-  if (input) {
-    input.addEventListener("keydown", function(e) {
-      if (e.key === "Enter") {
-        e.preventDefault();
-        const buttons = window.parent.document.querySelectorAll('button');
-        for (const btn of buttons) {
-          if (btn.innerText.trim().toLowerCase() === "controleer") {
-            btn.click();
-            break;
-          }
-        }
-      }
-    });
-  }
-});
-</script>
-        <script>
-            const input = document.querySelector('input[type="text"]');
-            if(input){ input.focus(); }
-        </script>
-        """, height=0)
+        # ✅ Form handling
+        if submitted:
+            user_ans = (answer or "").strip().lower()
+            st.session_state.score_total += 1
+            if user_ans == correct_answer.strip().lower():
+                st.session_state.score_good += 1
+                record_attempt(current, True)
+                st.success("✔️ Goed!")
+            else:
+                record_attempt(current, False)
+                st.error(f"✖️ Fout — juiste antwoord: {correct_answer}")
 
-        cols = st.columns([1, 1, 1])
-        with cols[0]:
-            if st.button("Controleer"):
-                user_ans = (answer or "").strip().lower()
-                st.session_state.score_total += 1
-                if user_ans == correct_answer.strip().lower():
-                    st.session_state.score_good += 1
-                    record_attempt(current, True)
-                    st.success("✔️ Goed!")
-                else:
-                    record_attempt(current, False)
-                    st.error(f"✖️ Fout — juiste antwoord: {correct_answer}")
+            time.sleep(2)
+            choose_next_item()
+            st.rerun()
 
-                # ✅ Wacht 2 seconden voordat de volgende zin komt
-                time.sleep(2)
+        if hint_clicked:
+            st.info(f"Hint — juiste antwoord: {correct_answer}")
 
-                choose_next_item()
-                st.rerun()
-        with cols[1]:
-            if st.button("Hint"):
-                st.info(f"Hint — juiste antwoord: {correct_answer}")
-        with cols[2]:
-            if st.button("Reset score"):
-                reset_score()
-                st.success("Score gereset.")
+        if reset_clicked:
+            reset_score()
+            st.success("Score gereset.")
 
         # ✅ Status direct onder knoppen
         st.markdown("---")
@@ -299,4 +275,4 @@ else:
 
 st.markdown("---")
 st.markdown("Tip: Voor het beste effect oefen dagelijks. De spaced repetition zorgt dat moeilijkheden terugkomen.")
-st.caption("Opmerking: Focus automatisch instellen in Streamlit is beperkt. Typ in het invulveld na het wisselen van zin.")
+st.caption("Opmerking: Door het gebruik van formulieren kun je nu met Enter direct controleren.")
