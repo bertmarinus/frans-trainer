@@ -125,6 +125,7 @@ def init_session_state():
     st.session_state.setdefault("score_total", 0)
     st.session_state.setdefault("history", [])
     st.session_state.setdefault("meta", {})
+    st.session_state.setdefault("antwoord_form_answer", "")
 init_session_state()
 
 # ---------------- Sidebar ----------------
@@ -211,10 +212,9 @@ with col1:
 
             # ✅ FORM IMPLEMENTATION + AUTO-FOCUS
             with st.form("antwoord_form"):
-                answer = st.text_input("Vervoeging invullen", placeholder="Typ hier de vervoeging")
+                answer = st.text_input("Vervoeging invullen", key="antwoord_form_answer", placeholder="Typ hier de vervoeging")
                 submitted = st.form_submit_button("Controleer")
 
-            # Inject JS for auto-focus
             components.html("""
             <script>
                 const input = document.querySelector('input[type="text"]');
@@ -232,7 +232,11 @@ with col1:
                 else:
                     record_attempt(current, False)
                     st.error(f"✖️ Fout — juiste antwoord: {correct_answer}")
+
                 choose_next_item()
+
+                # ✅ Reset invulveld
+                st.session_state["antwoord_form_answer"] = ""
                 st.rerun()
 
             cols = st.columns([1, 1])
