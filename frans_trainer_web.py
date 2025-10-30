@@ -1,5 +1,5 @@
 # frans_trainer_streamlit.py
-# Streamlit app: Franse werkwoorden trainer (één bestand)
+# Streamlit app: Franse werkwoorden trainer
 # Run: streamlit run frans_trainer_streamlit.py
 
 import streamlit as st
@@ -133,8 +133,7 @@ def init_session_state():
     st.session_state.setdefault("score_total", 0)
     st.session_state.setdefault("history", [])
     st.session_state.setdefault("meta", {})  # key -> {errors, last}
-    # Ensure input key exists to avoid StreamlitAPIException later
-    st.session_state.setdefault("answer_input", "")
+    st.session_state.setdefault("answer_input", "")  # always ensure this exists
 
 init_session_state()
 
@@ -185,7 +184,7 @@ if not infinitieven:
     st.stop()
 
 # Verb and tijden selection
-verb = st.sidebar.selectbox("Kies werkwoord (infinitief)", options=infinitieven, index=0 if st.session_state.verb == "" else (infinitieven.index(st.session_state.verb) if st.session_state.verb in infinitieven else 0))
+verb = st.sidebar.selectbox("Kies werkwoord (infinitief)", options=infinitieven, index=0 if st.session_state.verb == "" else infinitieven.index(st.session_state.verb) if st.session_state.verb in infinitieven else 0)
 
 all_tijden_set = sorted(set(row[2] for row in data if row[3] == verb), key=lambda s: s.lower())
 tijd_order = ["présent", "imparfait", "passé composé", "futur"]
@@ -242,7 +241,7 @@ with col1:
             cols = st.columns([1, 1, 1])
             with cols[0]:
                 if st.button("Controleer"):
-                    user_ans = (st.session_state.get("answer_input", "") or "").strip().lower()
+                    user_ans = (st.session_state.answer_input or "").strip().lower()
                     st.session_state.score_total += 1
                     if user_ans == correct_answer.strip().lower():
                         st.session_state.score_good += 1
@@ -251,19 +250,11 @@ with col1:
                     else:
                         record_attempt(current, False)
                         st.error(f"✖️ Fout — juiste antwoord: {correct_answer}")
-
-                    # kies het volgende item
+                    # prepare next item: choose, clear input, rerun to immediately show next
                     choose_next_item()
-
-                    # Probeer het invoerveld veilig te legen en daarna de app te herstarten.
-                    try:
-                        # attribuut-toegang is iets betrouwbaarder dan dict-assign in sommige Streamlit versies
-                        st.session_state.answer_input = ""
-                    except Exception:
-                        # Als dat faalt, negeer en forceer in ieder geval een rerun zodat de volgende zin in beeld komt
-                        pass
-
-                    # Herlaad de app meteen zodat de volgende zin zichtbaar is
+                    # Clear the input field safely by setting session state key then rerun
+                    st.session_state["answer_input"] = ""
+                    # Use experimental_rerun to immediately refresh UI and show next sentence
                     st.experimental_rerun()
 
             with cols[1]:
@@ -296,6 +287,7 @@ with col2:
 st.subheader("Voortgang per dag")
 if st.session_state.history:
     hist_df = pd.DataFrame(st.session_state.history)
+    # ensure timestamp is datetime
     hist_df["timestamp"] = pd.to_datetime(hist_df["timestamp"])
     hist_df["date"] = hist_df["timestamp"].dt.date
     agg = hist_df.groupby("date")["correct"].agg(['sum', 'count']).reset_index()
@@ -309,4 +301,4 @@ else:
 
 st.markdown("---")
 st.markdown("Tip: Voor het beste effect oefen dagelijks. De spaced repetition zorgt dat moeilijkheden terugkomen.")
-st.caption("Opmerking: Focus automatisch instellen in Streamlit is beperkt. Typ in het invulveld na het wisselen van zin.")
+st.caption("Opmerking: Focus automatisch instellen in Streamlit is beperkt. Type of tik in het invulveld na het wisselen van zin.")
