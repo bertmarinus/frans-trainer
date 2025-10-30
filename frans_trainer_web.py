@@ -7,6 +7,7 @@ from datetime import datetime
 from pathlib import Path
 from typing import List, Tuple, Optional
 import streamlit.components.v1 as components
+import time  # voor 4 seconden delay
 
 st.set_page_config(page_title="Franse Werkwoorden Trainer", layout="centered", initial_sidebar_state="expanded")
 
@@ -210,69 +211,39 @@ else:
         # ✅ Unieke key per zin
         zin_key = f"answer_{hash(current[0])}"
         answer = st.text_input("Vervoeging invullen", key=zin_key, placeholder="Typ hier de vervoeging")
-
-        # ✅ Auto-focus
-        components.html("""
-        <script>
-            const input = document.querySelector('input[type="text"]');
-            if(input){ input.focus(); }
-        </script>
-        """, height=0)
-
         cols = st.columns([1, 1, 1])
         with cols[0]:
             if st.button("Controleer"):
                 user_ans = (answer or "").strip().lower()
                 st.session_state.score_total += 1
+                msg_placeholder = st.empty()
                 if user_ans == correct_answer.strip().lower():
                     st.session_state.score_good += 1
                     record_attempt(current, True)
-                    st.success("✔️ Goed!")
+                    msg_placeholder.success("✔️ Goed!")
                 else:
                     record_attempt(current, False)
-                    st.error(f"✖️ Fout — juiste antwoord: {correct_answer}")
-                choose_next_item()
+                    msg_placeholder.error(f"✖️ Fout — juiste antwoord: {correct_answer}")
+                st.session_state.current = choose_next_item()
+                time.sleep(4)  # 4 seconden laten zien
                 st.rerun()
         with cols[1]:
             if st.button("Hint"):
-                st.info(f"Hint — juiste antwoord: {correct_answer}")
+                st.info(f"Correct antwoord: {correct_answer}")
         with cols[2]:
-            if st.button("Reset score"):
-                reset_score()
-                st.success("Score gereset.")
+            if st.button("Overslaan"):
+                st.session_state.current = choose_next_item()
+                st.rerun()
 
-        # ✅ Status direct onder knoppen
-        st.markdown("---")
-        st.subheader("Status")
-        st.metric("Score (goed / totaal)", f"{st.session_state.score_good} / {st.session_state.score_total}")
-        total_items = len(st.session_state.filtered)
-        st.write(f"Zinnen in selectie: {total_items}")
-        meta_items = []
-        for it in st.session_state.filtered:
-            k = make_key(it)
-            m = st.session_state.meta.get(k, {"errors": 0, "last": None})
-            meta_items.append({"Zin": it[0], "Vervoeging": it[1], "Tijd": it[2], "Infinitief": it[3], "errors": m["errors"], "last": m["last"]})
-        if meta_items:
-            df_meta = pd.DataFrame(meta_items)
-            df_hard = df_meta.sort_values(["errors", "last"], ascending=[False, True]).head(5)
-            st.write("Moeilijkste zinnen (top 5)")
-            st.table(df_hard[["Zin", "errors", "last"]])
-
-# ---------------- Progress chart ----------------
-st.subheader("Voortgang per dag")
+# ---------------- Score en geschiedenis ----------------
+st.subheader("Score")
+st.write(f"✔️ Goed: {st.session_state.score_good} / {st.session_state.score_total}")
 if st.session_state.history:
     hist_df = pd.DataFrame(st.session_state.history)
-    hist_df["timestamp"] = pd.to_datetime(hist_df["timestamp"])
-    hist_df["date"] = hist_df["timestamp"].dt.date
-    agg = hist_df.groupby("date")["correct"].agg(['sum', 'count']).reset_index()
-    agg["accuracy"] = (agg["sum"] / agg["count"]) * 100
-    agg = agg.sort_values("date")
-    st.line_chart(data=agg.set_index("date")[["accuracy"]])
-    st.bar_chart(data=agg.set_index("date")[["count"]])
-    st.write("Legenda: lijn = accuracy (%) per dag, balk = aantal pogingen per dag")
-else:
-    st.info("Nog geen oefenpogingen geregistreerd.")
+    hist_df["Datum"] = hist_df["timestamp"].dt.date
+    daily = hist_df.groupby("Datum").sum().reset_index()
+    st.line_chart(daily.rename(columns={"correct": "Aantal goede antwoorden"}).set_index("Datum")["Aantal goede antwoorden"])
 
-st.markdown("---")
-st.markdown("Tip: Voor het beste effect oefen dagelijks. De spaced repetition zorgt dat moeilijkheden terugkomen.")
-st.caption("Opmerking: Focus automatisch instellen in Streamlit is beperkt. Typ in het invulveld na het wisselen van zin.")
+if st.button("Reset score"):
+    reset_score()
+    st.rerun()
