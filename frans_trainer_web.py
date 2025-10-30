@@ -233,8 +233,8 @@ else:
                     record_attempt(current, False)
                     st.error(f"✖️ Fout — juiste antwoord: {correct_answer}")
 
-                # ✅ Wacht 4 seconden voordat de volgende zin komt
-                time.sleep(4)
+                # ✅ Wacht 2 seconden voordat de volgende zin komt
+                time.sleep(2)
 
                 choose_next_item()
                 st.rerun()
