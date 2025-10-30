@@ -7,6 +7,7 @@ from datetime import datetime
 from pathlib import Path
 from typing import List, Tuple, Optional
 import streamlit.components.v1 as components
+import time  # ✅ toegevoegd voor vertraging
 
 st.set_page_config(page_title="Franse Werkwoorden Trainer", layout="centered", initial_sidebar_state="expanded")
 
@@ -231,6 +232,10 @@ else:
                 else:
                     record_attempt(current, False)
                     st.error(f"✖️ Fout — juiste antwoord: {correct_answer}")
+
+                # ✅ Wacht 4 seconden voordat de volgende zin komt
+                time.sleep(4)
+
                 choose_next_item()
                 st.rerun()
         with cols[1]:
