@@ -257,13 +257,20 @@ if st.session_state.history:
 else:
     st.info("Nog geen oefenpogingen geregistreerd.")
 
-# ---------------- Focus fix (blijft na herbouw) ----------------
+# ---------------- Focus fix (blijft stabiel) ----------------
 components.html("""
 <script>
 setTimeout(() => {
-  const input = window.parent.document.querySelector('input[type="text"]');
-  if (input) input.focus();
-}, 300);
+  const tryFocus = () => {
+    const input = window.parent.document.querySelector('input[type="text"]');
+    if (input) {
+      input.focus();
+    } else {
+      setTimeout(tryFocus, 200);
+    }
+  };
+  tryFocus();
+}, 200);
 </script>
 """, height=0)
 
