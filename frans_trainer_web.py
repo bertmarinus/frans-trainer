@@ -246,6 +246,7 @@ with col1:
             cols = st.columns([1, 1, 1])
             with cols[0]:
                 if st.button("Controleer"):
+                    # Read answer from session_state (safe)
                     user_ans = (st.session_state.get("answer_input", "") or "").strip().lower()
                     st.session_state.score_total += 1
                     if user_ans == correct_answer.strip().lower():
@@ -256,17 +257,17 @@ with col1:
                         record_attempt(current, False)
                         st.error(f"✖️ Fout — juiste antwoord: {correct_answer}")
 
-                    # kies het volgende item
+                    # Kies het volgende item (updates st.session_state.current)
                     choose_next_item()
 
-                    # Probeer het invoerveld veilig te legen en daarna de app te herstarten.
+                    # Leeg het invulveld veilig; attribuut-toegang is beter
                     try:
                         st.session_state.answer_input = ""
                     except Exception:
+                        # als dit foutgaat, laat het staan; de volgende rerun (door de button) zal vaak alsnog correct werken
                         pass
 
-                    # Herlaad de app meteen zodat de volgende zin zichtbaar is
-                    st.experimental_rerun()
+                    # Geen expliciete rerun nodig; button klik triggert rerun automatisch.
 
             with cols[1]:
                 if st.button("Hint"):
