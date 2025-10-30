@@ -1,6 +1,6 @@
-# frans_trainer_web.py
-# Streamlit app: Franse werkwoorden trainer
-# Run: streamlit run frans_trainer_web.py
+# frans_trainer_streamlit.py
+# Streamlit app: Franse werkwoorden trainer (één bestand)
+# Run: streamlit run frans_trainer_streamlit.py
 
 import streamlit as st
 import pandas as pd
@@ -9,15 +9,10 @@ import math
 from datetime import datetime
 from pathlib import Path
 from typing import List, Tuple, Optional
-import streamlit.components.v1 as components
 
-st.set_page_config(
-    page_title="Franse Werkwoorden Trainer",
-    layout="centered",
-    initial_sidebar_state="expanded"
-)
+st.set_page_config(page_title="Franse Werkwoorden Trainer", layout="centered", initial_sidebar_state="expanded")
 
-# ---------------- Builtin example sentences ----------------
+# ---------------- Built-in voorbeeldzinnen ----------------
 
 BUILTIN_DATA = [
     ("Je ___ que tu as raison. (présent)", "sais", "présent", "savoir"),
@@ -29,7 +24,7 @@ BUILTIN_DATA = [
 
 DEFAULT_FILENAME = "Frans_werkwoorden.xlsx"
 
-# ---------------- Utility functions ----------------
+# ---------------- Utility functies ----------------
 
 def read_data_from_file(path: Path) -> Optional[List[Tuple[str, str, str, str]]]:
     try:
@@ -58,7 +53,7 @@ def load_initial_data():
 
 def filter_data(data, infinitief: str, tijden: List[str]):
     filtered = [row for row in data if row[3].lower() == infinitief.lower()]
-    if not tijden or "Alle tijden" in tijden:
+    if not tijden or ("Alle tijden" in tijden):
         return filtered
     tijden_lower = [t.lower() for t in tijden]
     return [row for row in filtered if row[2].lower() in tijden_lower]
@@ -137,18 +132,14 @@ def init_session_state():
     st.session_state.setdefault("history", [])
     st.session_state.setdefault("meta", {})
     st.session_state.setdefault("answer_input", "")
-    st.session_state.setdefault("clear_input", False)
 
 init_session_state()
 
-# ---------------- Sidebar ----------------
+# ---------------- Sidebar: Data source en selectie ----------------
 
 st.sidebar.title("Bron en selectie")
 
-source = st.sidebar.radio(
-    "Databron",
-    ("Standaard bestand (Frans_werkwoorden.xlsx)", "Ingebouwde voorbeeldzinnen", "Upload Excel/CSV")
-)
+source = st.sidebar.radio("Databron", ("Standaard bestand (Frans_werkwoorden.xlsx)", "Ingebouwde voorbeeldzinnen", "Upload Excel/CSV"))
 
 if source.startswith("Standaard"):
     p = Path(DEFAULT_FILENAME)
@@ -157,6 +148,8 @@ if source.startswith("Standaard"):
         if data_try:
             st.session_state.data = data_try
             st.session_state.source = "default_loaded"
+    else:
+        st.session_state.source = "default"
     st.sidebar.write(f"Standaardbestand: {DEFAULT_FILENAME}")
 elif source.startswith("Ingebouwde"):
     st.session_state.data = BUILTIN_DATA
@@ -164,7 +157,7 @@ elif source.startswith("Ingebouwde"):
     st.sidebar.write("Ingebouwde voorbeeldzinnen geselecteerd.")
 else:
     uploaded = st.sidebar.file_uploader("Upload Excel (.xlsx/.xls/.csv)", type=["xlsx", "xls", "csv"])
-    if uploaded:
+    if uploaded is not None:
         try:
             if uploaded.name.lower().endswith(".csv"):
                 df = pd.read_csv(uploaded)
@@ -187,6 +180,8 @@ infinitieven = sorted(set(row[3] for row in data))
 if not infinitieven:
     st.error("Geen werkwoorden gevonden in de dataset.")
     st.stop()
+
+# ---------------- Sidebar: Verb en tijden ----------------
 
 verb = st.sidebar.selectbox(
     "Kies werkwoord (infinitief)",
@@ -213,54 +208,71 @@ ensure_meta_for_items(st.session_state.filtered)
 # ---------------- Main UI ----------------
 
 st.title("Franse Werkwoorden Trainer")
-st.markdown(
-    "Vul de ontbrekende vervoeging in. De app houdt score bij en past spaced repetition toe."
-)
+st.markdown("Vul de ontbrekende vervoeging in. De app houdt score bij en past spaced repetition toe zodat je zwakkere vervoegingen vaker krijgt.")
 
-col1, col2 = st.columns([3, 1])
+if not st.session_state.filtered:
+    st.warning("Geen zinnen gevonden voor deze selectie.")
+    st.stop()
 
-with col1:
-    st.subheader(f"Oefen: {verb}")
-    if not st.session_state.filtered:
-        st.warning("Er zijn geen zinnen voor deze selectie. Probeer een ander werkwoord of andere tijden.")
+# Kies nieuw item als huidige None
+if st.session_state.current is None:
+    choose_next_item()
+
+current = st.session_state.current
+if current is None:
+    st.warning("Geen items beschikbaar.")
+    st.stop()
+
+st.write(f"**Zin:** {current[0]}")
+st.write(f"*Tijd:* {current[2]}")
+
+# ---------------- Answer input en knoppen ----------------
+
+def check_answer():
+    ans = st.session_state.answer_input.strip()
+    correct = ans.lower() == current[1].lower()
+    record_attempt(current, correct)
+    st.session_state.answer_input = ""
+    if correct:
+        st.success(f"Correct! ✅ ({current[1]})")
+        st.session_state.score_good += 1
     else:
-        if st.session_state.current is None or st.session_state.current not in st.session_state.filtered:
-            choose_next_item()
+        st.error(f"Fout ❌. Correct antwoord: {current[1]}")
+    st.session_state.score_total += 1
+    choose_next_item()
 
-        current = st.session_state.current
-        if current:
-            zin_text, correct_answer, tijd_label, _ = current
-
-            st.markdown(f"**Zin**  \n{zin_text}")
-
-            def on_submit():
-                user_ans = st.session_state.answer_input.strip()
-                if not user_ans:
-                    return
-                correct = user_ans.lower() == correct_answer.lower()
-                record_attempt(current, correct)
-                if correct:
-                    st.success("Correct!")
-                else:
-                    st.error(f"Fout. Correct: **{correct_answer}**")
-                st.session_state.answer_input = ""
-                choose_next_item()
-
-            st.text_input(
-                "Jouw antwoord",
-                key="answer_input",
-                on_change=on_submit,
-                placeholder="Vul hier in"
-            )
-
+col1, col2, col3 = st.columns([3,1,1])
+with col1:
+    st.text_input("Jouw antwoord", key="answer_input", on_change=check_answer)
 with col2:
-    st.subheader("Score")
-    st.write(f"Goed: {st.session_state.score_good} / Totaal: {st.session_state.score_total}")
-    if st.button("Reset score"):
-        reset_score()
+    if st.button("Controleer"):
+        check_answer()
+with col3:
+    if st.button("Hint"):
+        hint = current[1][0] + "…"*(len(current[1])-1)
+        st.info(f"Hint: {hint}")
 
+# ---------------- Score en voortgang ----------------
+
+st.markdown("---")
+st.write(f"Score: {st.session_state.score_good} / {st.session_state.score_total}")
+
+# Optionele voortgangsgrafiek
 if st.session_state.history:
     df_hist = pd.DataFrame(st.session_state.history)
-    df_hist["timestamp"] = pd.to_datetime(df_hist["timestamp"])
-    st.subheader("Score verloop")
-    st.line_chart(df_hist.assign(correct=df_hist["correct"].astype(int)).set_index("timestamp")["correct"])
+    df_hist["cumulative"] = df_hist["correct"].cumsum()
+    st.line_chart(df_hist["cumulative"])
+
+# Moeilijkste items
+if st.session_state.meta:
+    sorted_meta = sorted(st.session_state.meta.items(), key=lambda kv: (-kv[1]["errors"], kv[1]["last"] or datetime.min))
+    hardest = [k.split("||")[0] for k,v in sorted_meta if v["errors"]>0][:5]
+    if hardest:
+        st.write("Moeilijkste zinnen (meeste fouten):")
+        for h in hardest:
+            st.write(f"- {h}")
+
+# Reset knop
+if st.button("Reset score"):
+    reset_score()
+    st.success("Score en geschiedenis gereset.")
