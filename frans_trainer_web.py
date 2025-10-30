@@ -133,6 +133,7 @@ def init_session_state():
     st.session_state.setdefault("score_total", 0)
     st.session_state.setdefault("history", [])
     st.session_state.setdefault("meta", {})  # key -> {errors, last}
+    # Ensure input key exists to avoid StreamlitAPIException later
     st.session_state.setdefault("answer_input", "")
 
 init_session_state()
@@ -206,38 +207,52 @@ ensure_meta_for_items(st.session_state.filtered)
 # ---------------- Main UI ----------------
 
 st.title("Franse Werkwoorden Trainer")
+st.markdown("Vul de ontbrekende vervoeging in. De app houdt score bij en past spaced repetition toe zodat moeilijkere zinnen vaker terugkomen.")
 
-if not st.session_state.filtered:
-    st.warning("Geen zinnen gevonden voor deze selectie.")
-    st.stop()
+with st.expander("Handleiding"):
+    st.markdown("""
+- Kies een werkwoord en tijden in de zijbalk.
+- Klik 'Nieuwe zin' of 'Controleer' na invullen.
+- Moeilijke zinnen verschijnen vaker.
+- Score wordt automatisch bijgehouden.
+""")
 
-current = st.session_state.current or choose_next_item()
+# ---------------- Main interaction ----------------
 
-st.markdown(f"**Zin:** {current[0]}")
+current = st.session_state.current
+if current is None and st.session_state.filtered:
+    current = choose_next_item()
 
-# ---------------- Input en knop ----------------
+if not current:
+    st.warning("Geen zinnen beschikbaar voor de gekozen selectie.")
+else:
+    st.markdown(f"**Zin:** {current[0]}")
 
-# Text input eerst
-answer = st.text_input("Vervoeging invullen", key="answer_input", placeholder="Typ hier de vervoeging")
+    # Text input tied to session_state
+    answer = st.text_input("Jouw antwoord:", value=st.session_state.answer_input, key="answer_input", placeholder="Vul de vervoeging in")
+    
+    col1, col2, col3 = st.columns([1,1,1])
+    with col1:
+        if st.button("Controleer"):
+            correct = answer.strip().lower() == current[1].strip().lower()
+            if correct:
+                st.success("Correct! 🎉")
+                st.session_state.score_good += 1
+            else:
+                st.error(f"Fout! Correct: **{current[1]}**")
+            st.session_state.score_total += 1
+            record_attempt(current, correct)
+            st.session_state.answer_input = ""  # <-- veld resetten na controle
+            choose_next_item()
+            
+    with col2:
+        if st.button("Nieuwe zin"):
+            choose_next_item()
+            st.session_state.answer_input = ""  # <-- veld resetten bij nieuwe zin
 
-# Knop
-if st.button("Controleer"):
-    user_ans = (st.session_state.answer_input or "").strip().lower()
-    st.session_state.score_total += 1
-    if user_ans == current[1].strip().lower():
-        st.session_state.score_good += 1
-        record_attempt(current, True)
-        st.success("✔️ Goed!")
-    else:
-        record_attempt(current, False)
-        st.error(f"✖️ Fout — juiste antwoord: {current[1]}")
+    with col3:
+        if st.button("Reset score"):
+            reset_score()
+            st.success("Score gereset.")
 
-    choose_next_item()
-
-    # Reset veld via session_state
-    st.session_state.answer_input = ""
-    st.experimental_rerun()
-
-# ---------------- Score ----------------
-
-st.markdown(f"**Score:** {st.session_state.score_good} / {st.session_state.score_total}")
+st.markdown(f"Score: {st.session_state.score_good}/{st.session_state.score_total}")
