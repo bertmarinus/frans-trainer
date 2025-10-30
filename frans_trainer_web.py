@@ -125,7 +125,6 @@ def init_session_state():
     st.session_state.setdefault("score_total", 0)
     st.session_state.setdefault("history", [])
     st.session_state.setdefault("meta", {})
-    st.session_state.setdefault("antwoord_form_answer", "")
 init_session_state()
 
 # ---------------- Sidebar ----------------
@@ -210,11 +209,11 @@ with col1:
             st.markdown(f"**Zin** \n{zin_text}")
             st.markdown(f"_Tijd: {tijd_label}_")
 
-            # ✅ FORM IMPLEMENTATION + AUTO-FOCUS
-            with st.form("antwoord_form"):
-                answer = st.text_input("Vervoeging invullen", key="antwoord_form_answer", placeholder="Typ hier de vervoeging")
-                submitted = st.form_submit_button("Controleer")
+            # ✅ Unieke key per zin
+            zin_key = f"answer_{hash(current[0])}"
+            answer = st.text_input("Vervoeging invullen", key=zin_key, placeholder="Typ hier de vervoeging")
 
+            # ✅ Auto-focus
             components.html("""
             <script>
                 const input = document.querySelector('input[type="text"]');
@@ -222,28 +221,24 @@ with col1:
             </script>
             """, height=0)
 
-            if submitted:
-                user_ans = (answer or "").strip().lower()
-                st.session_state.score_total += 1
-                if user_ans == correct_answer.strip().lower():
-                    st.session_state.score_good += 1
-                    record_attempt(current, True)
-                    st.success("✔️ Goed!")
-                else:
-                    record_attempt(current, False)
-                    st.error(f"✖️ Fout — juiste antwoord: {correct_answer}")
-
-                choose_next_item()
-
-                # ✅ Reset invulveld
-                st.session_state["antwoord_form_answer"] = ""
-                st.rerun()
-
-            cols = st.columns([1, 1])
+            cols = st.columns([1, 1, 1])
             with cols[0]:
+                if st.button("Controleer"):
+                    user_ans = (answer or "").strip().lower()
+                    st.session_state.score_total += 1
+                    if user_ans == correct_answer.strip().lower():
+                        st.session_state.score_good += 1
+                        record_attempt(current, True)
+                        st.success("✔️ Goed!")
+                    else:
+                        record_attempt(current, False)
+                        st.error(f"✖️ Fout — juiste antwoord: {correct_answer}")
+                    choose_next_item()
+                    st.rerun()
+            with cols[1]:
                 if st.button("Hint"):
                     st.info(f"Hint — juiste antwoord: {correct_answer}")
-            with cols[1]:
+            with cols[2]:
                 if st.button("Reset score"):
                     reset_score()
                     st.success("Score gereset.")
