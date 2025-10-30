@@ -7,7 +7,7 @@ from datetime import datetime
 from pathlib import Path
 from typing import List, Tuple, Optional
 import streamlit.components.v1 as components
-import time  # ✅ toegevoegd voor vertraging
+import time
 
 st.set_page_config(page_title="Franse Werkwoorden Trainer", layout="centered", initial_sidebar_state="expanded")
 
@@ -188,7 +188,7 @@ with st.expander("Handleiding"):
     st.markdown("""
 - Kies een databron: standaardbestand, ingebouwde voorbeelden of upload een Excel/CSV-bestand (4 kolommen: Zin, Vervoeging, Tijd, Infinitief).
 - Kies een werkwoord (infinitief) en één of meerdere tijden (of 'Alle tijden').
-- Typ de vervoeging in het invulveld en klik 'Controleer'.
+- Typ de vervoeging in het invulveld en klik 'Controleer' of druk Enter.
 - Gebruik 'Hint' om het juiste antwoord te zien.
 - De score wordt live bijgehouden. De grafiek toont voortgang per dag.
 - Spaced repetition: zinnen die vaker fout worden beantwoord of langer niet geoefend zijn, krijgen voorrang.
@@ -210,28 +210,16 @@ else:
 
         # ✅ Unieke key per zin
         zin_key = f"answer_{hash(current[0])}"
+        answer = st.text_input(
+            "Vervoeging invullen", key=zin_key, placeholder="Typ hier de vervoeging", 
+            on_change=lambda: st.session_state._submit_pressed := True
+        )
+        if not hasattr(st.session_state, "_submit_pressed"):
+            st.session_state._submit_pressed = False
 
-        # ------------------ Form toegevoegd voor Enter-toets ------------------
-        with st.form(key=f"form_{zin_key}", clear_on_submit=False):
-            answer = st.text_input("Vervoeging invullen", key=zin_key, placeholder="Typ hier de vervoeging")
-
-            # ✅ Auto-focus
-            components.html("""
-            <script>
-                const input = document.querySelector('input[type="text"]');
-                if(input){ input.focus(); }
-            </script>
-            """, height=0)
-
-            cols = st.columns([1, 1, 1])
-            with cols[0]:
-                submit_btn = st.form_submit_button("Controleer")
-            with cols[1]:
-                hint_btn = st.form_submit_button("Hint")
-            with cols[2]:
-                reset_btn = st.form_submit_button("Reset score")
-
-            if submit_btn:
+        cols = st.columns([1, 1, 1])
+        with cols[0]:
+            if st.button("Controleer") or st.session_state._submit_pressed:
                 user_ans = (answer or "").strip().lower()
                 st.session_state.score_total += 1
                 if user_ans == correct_answer.strip().lower():
@@ -240,27 +228,22 @@ else:
                     st.success("✔️ Goed!")
                 else:
                     record_attempt(current, False)
-                    st.error(f"✖️ Fout — juiste antwoord: {correct_answer}")
-
-                time.sleep(2)
+                    st.error(f"❌ Fout. Correct: **{correct_answer}**")
                 choose_next_item()
-                st.rerun()
+                st.session_state._submit_pressed = False
+        with cols[1]:
+            if st.button("Hint"):
+                st.info(f"Hint: {correct_answer}")
+        with cols[2]:
+            if st.button("Volgende"):
+                choose_next_item()
 
-            if hint_btn:
-                st.info(f"Hint — juiste antwoord: {correct_answer}")
+st.subheader("Score")
+st.write(f"{st.session_state.score_good} / {st.session_state.score_total} correct")
 
-            if reset_btn:
-                reset_score()
-                st.success("Score gereset.")
-
-        # ✅ Status direct onder knoppen
-        st.markdown("---")
-        st.subheader("Status")
-        st.metric("Score (goed / totaal)", f"{st.session_state.score_good} / {st.session_state.score_total}")
-        total_items = len(st.session_state.filtered)
-        st.write(f"Zinnen in selectie: {total_items}")
-        meta_items = []
-        for it in st.session_state.filtered:
-            k = make_key(it)
-            m = st.session_state.meta.get(k, {"errors": 0, "last": None})
-            meta_items.append({"Zin": it[0], "Vervoeging": it[1],
+# Eenvoudige grafiek
+if st.session_state.history:
+    df_hist = pd.DataFrame(st.session_state.history)
+    df_hist["datum"] = df_hist["timestamp"].dt.date
+    score_per_day = df_hist.groupby("datum")["correct"].mean() * 100
+    st.line_chart(score_per_day)
