@@ -214,6 +214,25 @@ else:
 
         # ✅ Auto-focus
         components.html("""
+<script>
+document.addEventListener("DOMContentLoaded", function() {
+  const input = window.parent.document.querySelector('input[type="text"]');
+  if (input) {
+    input.addEventListener("keydown", function(e) {
+      if (e.key === "Enter") {
+        e.preventDefault();
+        const buttons = window.parent.document.querySelectorAll('button');
+        for (const btn of buttons) {
+          if (btn.innerText.trim().toLowerCase() === "controleer") {
+            btn.click();
+            break;
+          }
+        }
+      }
+    });
+  }
+});
+</script>
         <script>
             const input = document.querySelector('input[type="text"]');
             if(input){ input.focus(); }
