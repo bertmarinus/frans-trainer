@@ -9,7 +9,6 @@ import math
 from datetime import datetime
 from pathlib import Path
 from typing import List, Tuple, Optional
-import re
 
 st.set_page_config(page_title="Franse Werkwoorden Trainer", layout="centered", initial_sidebar_state="expanded")
 
@@ -28,10 +27,7 @@ DEFAULT_FILENAME = "Frans_werkwoorden.xlsx"
 def normalize(text: str) -> str:
     if text is None:
         return ""
-    text = str(text).lower()
-    text = re.sub(r'\s+', '', text)  # verwijder alle spaties
-    text = re.sub(r'[^a-zàâçéèêëîïôûùüÿñæœ]', '', text)  # behoud alleen letters
-    return text
+    return "".join(str(text).lower().split())
 
 # ---------------- Utility functions ----------------
 def read_data_from_file(path: Path) -> Optional[List[Tuple[str, str, str, str]]]:
@@ -49,8 +45,9 @@ def read_data_from_file(path: Path) -> Optional[List[Tuple[str, str, str, str]]]
     df = df.iloc[:, :4].dropna()
     df.columns = ["Zin", "Vervoeging", "Tijd", "Infinitief"]
 
+    # Strip en lowercase ALLE waarden
     for col in ["Zin", "Vervoeging", "Tijd", "Infinitief"]:
-        df[col] = df[col].astype(str).str.strip()
+        df[col] = df[col].astype(str).str.strip().str.lower()
 
     return list(df.itertuples(index=False, name=None))
 
@@ -171,7 +168,7 @@ else:
             else:
                 df = df.iloc[:, :4].dropna()
                 df.columns = ["Zin", "Vervoeging", "Tijd", "Infinitief"]
-                df = df.astype(str).apply(lambda col: col.str.strip())
+                df = df.astype(str).apply(lambda col: col.str.strip().str.lower())
                 data = list(df.itertuples(index=False, name=None))
                 st.session_state.source = "uploaded"
                 st.sidebar.success(f"Gelaad: {uploaded.name} ({len(data)} rijen)")
@@ -199,7 +196,6 @@ for row in data:
             seen_norms.add(t_norm)
             all_tijden_for_verb.append(row[2].strip())
 
-# Sorteer tijden
 tijd_order = ["présent", "imparfait", "passé composé", "futur"]
 def tijd_sort_key(t):
     try:
@@ -208,7 +204,6 @@ def tijd_sort_key(t):
     except ValueError:
         return (1, t.lower())
 all_tijden_for_verb = sorted(all_tijden_for_verb, key=tijd_sort_key)
-
 tijd_options = ["Alle tijden"] + all_tijden_for_verb
 default_tijden = st.session_state.tijden if st.session_state.tijden else ["Alle tijden"]
 tijden_selected = st.sidebar.multiselect("Kies één of meerdere tijden", options=tijd_options, default=default_tijden)
@@ -263,7 +258,6 @@ if submitted:
         choose_next_item()
 
 # ---------------- Score display ----------------
-st.markdown(f"**Score:** {st.session_state.score_good} / {st.session_state.score_total}")
+st.sidebar.markdown(f"**Score:** {st.session_state.score_good}/{st.session_state.score_total}")
 
-if st.button("Reset score"):
-    reset_score()
+st.sidebar.button("Reset score", on_click=reset_score)
