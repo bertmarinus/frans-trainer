@@ -191,6 +191,10 @@ else:
                 df = pd.read_csv(uploaded)
             else:
                 df = pd.read_excel(uploaded, engine="openpyxl")
+                if "vouloir" in df["Infinitief"].values:
+    df_vouloir = df[df["Infinitief"].str.strip().str.lower() == "vouloir"]
+    st.write([repr(v) for v in df_vouloir["Tijd"].unique()])
+
             if df.shape[1] < 4:
                 st.sidebar.error("Het bestand moet minimaal 4 kolommen hebben: Zin, Vervoeging, Tijd, Infinitief.")
             else:
