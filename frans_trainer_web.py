@@ -168,9 +168,14 @@ if not infinitieven:
     st.error("Geen werkwoorden gevonden in de dataset.")
     st.stop()
 
+
+# Verzamel alle infinitieven
+infinitieven = sorted(set(row[3].strip().lower() for row in data))
 verb = st.sidebar.selectbox("Kies werkwoord (infinitief)", options=infinitieven)
-all_tijden_set = sorted(set(row[2] for row in data if row[3] == verb), key=lambda s: s.lower())
+
+# Verzamel tijden voor dit werkwoord
 tijd_order = ["présent", "imparfait", "passé composé", "futur"]
+all_tijden_set = sorted(set(row[2].strip().lower() for row in data if row[3].strip().lower() == verb))
 tijden_ordered = [t for t in tijd_order if t in all_tijden_set] + [t for t in all_tijden_set if t not in tijd_order]
 tijd_options = ["Alle tijden"] + tijden_ordered
 tijden = st.sidebar.multiselect("Kies één of meerdere tijden", options=tijd_options, default=["Alle tijden"])
