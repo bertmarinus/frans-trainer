@@ -27,7 +27,7 @@ DEFAULT_FILENAME = "Frans_werkwoorden.xlsx"
 def normalize(text: str) -> str:
     if text is None:
         return ""
-    return "".join(str(text).lower().split())
+    return "".join(str(text).lower().strip().split())
 
 # ---------------- Utility functions ----------------
 def read_data_from_file(path: Path) -> Optional[List[Tuple[str, str, str, str]]]:
@@ -45,9 +45,8 @@ def read_data_from_file(path: Path) -> Optional[List[Tuple[str, str, str, str]]]
     df = df.iloc[:, :4].dropna()
     df.columns = ["Zin", "Vervoeging", "Tijd", "Infinitief"]
 
-    # Strip en lowercase ALLE waarden
     for col in ["Zin", "Vervoeging", "Tijd", "Infinitief"]:
-        df[col] = df[col].astype(str).str.strip().str.lower()
+        df[col] = df[col].astype(str).str.strip()
 
     return list(df.itertuples(index=False, name=None))
 
@@ -146,6 +145,7 @@ st.sidebar.title("Bron en selectie")
 
 source = st.sidebar.radio("Databron", ("Standaard bestand (Frans_werkwoorden.xlsx)", "Ingebouwde voorbeeldzinnen", "Upload Excel/CSV"))
 
+data = BUILTIN_DATA
 if source.startswith("Standaard"):
     data = load_data()
     st.session_state.source = "default_loaded" if data != BUILTIN_DATA else "default"
@@ -156,7 +156,6 @@ elif source.startswith("Ingebouwde"):
     st.sidebar.write("Ingebouwde voorbeeldzinnen geselecteerd.")
 else:
     uploaded = st.sidebar.file_uploader("Upload Excel (.xlsx/.xls/.csv)", type=["xlsx", "xls", "csv"])
-    data = BUILTIN_DATA
     if uploaded is not None:
         try:
             if uploaded.name.lower().endswith(".csv"):
@@ -168,7 +167,7 @@ else:
             else:
                 df = df.iloc[:, :4].dropna()
                 df.columns = ["Zin", "Vervoeging", "Tijd", "Infinitief"]
-                df = df.astype(str).apply(lambda col: col.str.strip().str.lower())
+                df = df.astype(str).apply(lambda col: col.str.strip())
                 data = list(df.itertuples(index=False, name=None))
                 st.session_state.source = "uploaded"
                 st.sidebar.success(f"Gelaad: {uploaded.name} ({len(data)} rijen)")
@@ -258,6 +257,7 @@ if submitted:
         choose_next_item()
 
 # ---------------- Score display ----------------
-st.sidebar.markdown(f"**Score:** {st.session_state.score_good}/{st.session_state.score_total}")
+st.markdown(f"**Score:** {st.session_state.score_good} / {st.session_state.score_total}")
 
-st.sidebar.button("Reset score", on_click=reset_score)
+if st.button("Reset score"):
+    reset_score()
