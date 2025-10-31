@@ -44,13 +44,11 @@ def read_data_from_file(path: Path) -> Optional[List[Tuple[str, str, str, str]]]
         return None
     df = df.iloc[:, :4].dropna()
     df.columns = ["Zin", "Vervoeging", "Tijd", "Infinitief"]
-
     for col in ["Zin", "Vervoeging", "Tijd", "Infinitief"]:
         df[col] = df[col].astype(str).str.strip()
-
     return list(df.itertuples(index=False, name=None))
 
-def load_data():
+def load_data() -> List[Tuple[str, str, str, str]]:
     """Lees altijd het standaardbestand bij elke rerun"""
     p = Path(DEFAULT_FILENAME)
     if p.exists():
@@ -143,36 +141,30 @@ st.session_state.setdefault("answer_input", "")
 # ---------------- Sidebar: Data source and selection ----------------
 st.sidebar.title("Bron en selectie")
 
-source = st.sidebar.radio("Databron", ("Standaard bestand (Frans_werkwoorden.xlsx)", "Ingebouwde voorbeeldzinnen", "Upload Excel/CSV"))
+# Automatisch standaarddata laden
+data = load_data()
+st.session_state.source = "default_loaded" if data != BUILTIN_DATA else "default"
+st.sidebar.write(f"Standaardbestand: {DEFAULT_FILENAME}")
 
-if source.startswith("Standaard"):
-    data = load_data()
-    st.session_state.source = "default_loaded" if data != BUILTIN_DATA else "default"
-    st.sidebar.write(f"Standaardbestand: {DEFAULT_FILENAME}")
-elif source.startswith("Ingebouwde"):
-    data = BUILTIN_DATA
-    st.session_state.source = "builtin"
-    st.sidebar.write("Ingebouwde voorbeeldzinnen geselecteerd.")
-else:
-    uploaded = st.sidebar.file_uploader("Upload Excel (.xlsx/.xls/.csv)", type=["xlsx", "xls", "csv"])
-    data = BUILTIN_DATA
-    if uploaded is not None:
-        try:
-            if uploaded.name.lower().endswith(".csv"):
-                df = pd.read_csv(uploaded)
-            else:
-                df = pd.read_excel(uploaded, engine="openpyxl")
-            if df.shape[1] < 4:
-                st.sidebar.error("Het bestand moet minimaal 4 kolommen hebben: Zin, Vervoeging, Tijd, Infinitief.")
-            else:
-                df = df.iloc[:, :4].dropna()
-                df.columns = ["Zin", "Vervoeging", "Tijd", "Infinitief"]
-                df = df.astype(str).apply(lambda col: col.str.strip())
-                data = list(df.itertuples(index=False, name=None))
-                st.session_state.source = "uploaded"
-                st.sidebar.success(f"Gelaad: {uploaded.name} ({len(data)} rijen)")
-        except Exception as e:
-            st.sidebar.error(f"Fout bij inlezen: {e}")
+# Upload optie (overschrijft automatisch)
+uploaded = st.sidebar.file_uploader("Upload Excel (.xlsx/.xls/.csv)", type=["xlsx", "xls", "csv"])
+if uploaded is not None:
+    try:
+        if uploaded.name.lower().endswith(".csv"):
+            df = pd.read_csv(uploaded)
+        else:
+            df = pd.read_excel(uploaded, engine="openpyxl")
+        if df.shape[1] < 4:
+            st.sidebar.error("Het bestand moet minimaal 4 kolommen hebben: Zin, Vervoeging, Tijd, Infinitief.")
+        else:
+            df = df.iloc[:, :4].dropna()
+            df.columns = ["Zin", "Vervoeging", "Tijd", "Infinitief"]
+            df = df.astype(str).apply(lambda col: col.str.strip())
+            data = list(df.itertuples(index=False, name=None))
+            st.session_state.source = "uploaded"
+            st.sidebar.success(f"Gelaad: {uploaded.name} ({len(data)} rijen)")
+    except Exception as e:
+        st.sidebar.error(f"Fout bij inlezen: {e}")
 
 # ---------------- Verb selection ----------------
 infinitieven_all = sorted(set(row[3] for row in data), key=lambda s: s.lower())
@@ -218,7 +210,7 @@ st.markdown("Vul de ontbrekende vervoeging in. De app houdt score bij en past sp
 
 with st.expander("Handleiding"):
     st.markdown("""
-- Kies een databron: standaardbestand, ingebouwde voorbeelden of upload een Excel/CSV-bestand.
+- Kies een databron: standaardbestand of upload een Excel/CSV-bestand.
 - Kies een werkwoord en tijden (of 'Alle tijden').
 - Typ de vervoeging in en druk op Enter of 'Controleer'.
 - Score wordt bijgehouden en moeilijke items verschijnen vaker.
