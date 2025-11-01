@@ -78,16 +78,21 @@ if st.session_state.feedback:
         st.error(st.session_state.feedback)
 
 # =========================================
-# AUTOMAATISCHE FOCUS VIA COMPONENT
+# AUTOMAATISCHE FOCUS VIA MUTATIONOBSERVER
 # =========================================
 focus_html = """
 <script>
-  window.onload = function() {
-    const input = window.parent.document.querySelector('input[data-testid="stTextInput"]');
-    if (input) {
-      input.focus();
-    }
-  };
+const observer = new MutationObserver((mutations, obs) => {
+  const input = window.parent.document.querySelector('input[data-testid="stTextInput"]');
+  if (input) {
+    input.focus();
+    obs.disconnect();
+  }
+});
+observer.observe(window.parent.document, {
+  childList: true,
+  subtree: true
+});
 </script>
 """
 components.html(focus_html, height=0, width=0)
