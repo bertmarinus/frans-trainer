@@ -1,8 +1,14 @@
 import streamlit as st
-import streamlit.components.v1 as components
+import time
 
+# =========================================
+# PAGINA-INSTELLINGEN
+# =========================================
 st.set_page_config(page_title="Woordsoorten Trainer", layout="centered")
 
+# =========================================
+# INITIËLE STATE
+# =========================================
 if "zinnen" not in st.session_state:
     st.session_state.zinnen = [
         ("De hond rent in de tuin.", "hond"),
@@ -24,60 +30,73 @@ if "feedback" not in st.session_state:
 if "user_input" not in st.session_state:
     st.session_state.user_input = ""
 
-def volgende_zin():
+# =========================================
+# FUNCTIE VOOR NIEUWE ZIN
+# =========================================
+def nieuwe_zin():
     st.session_state.index = (st.session_state.index + 1) % len(st.session_state.zinnen)
     st.session_state.feedback = ""
     st.session_state.user_input = ""
+    st.rerun()
 
+# =========================================
+# TITEL EN ZIN
+# =========================================
 st.title("🧠 Woordsoorten oefenen")
 
 zin, correct_antwoord = st.session_state.zinnen[st.session_state.index]
 st.markdown(f"<h3 style='color:#364953;'>Zin:</h3><p style='font-size:18px'>{zin}</p>", unsafe_allow_html=True)
 
-# Input met vaste key zodat hij niet telkens verandert
+# =========================================
+# INVULVELD
+# =========================================
 user_input = st.text_input(
     "Wat is het onderwerp?",
     key="user_input",
-    value=st.session_state.user_input,
     label_visibility="collapsed",
-    placeholder="Typ hier je antwoord..."
 )
 
-controleer_gedrukt = st.button("Controleer")
+# =========================================
+# KNOPPEN
+# =========================================
+col1, col2 = st.columns([1, 3])
+with col1:
+    if st.button("Controleer", key="controleer_button"):
+        if user_input.strip().lower() == correct_antwoord.lower():
+            st.session_state.feedback = "✅ Goed gedaan!"
+        else:
+            st.session_state.feedback = f"❌ Fout, het juiste antwoord was: {correct_antwoord}"
+        time.sleep(2)
+        nieuwe_zin()
 
-if controleer_gedrukt:
-    if user_input.strip().lower() == correct_antwoord.lower():
-        st.session_state.feedback = "✅ Goed gedaan!"
-    else:
-        st.session_state.feedback = f"❌ Fout, het juiste antwoord was: {correct_antwoord}"
-    volgende_zin()
-    # Focus terugzetten en cursor resetten via een kleine delay en front-end event
-    # We slaan de nieuwe user_input op leeg op zodat het veld leeggemaakt wordt
-    st.session_state.user_input = ""
-
-# Feedback weergeven
+# =========================================
+# FEEDBACK
+# =========================================
 if st.session_state.feedback:
     if "✅" in st.session_state.feedback:
         st.success(st.session_state.feedback)
     else:
         st.error(st.session_state.feedback)
 
-# JavaScript om focus te forceren met eventlistener op DOMContentLoaded en met kleine timeout
-focus_script = """
+# =========================================
+# AUTOMAATISCHE FOCUS VIA COMPONENT
+# =========================================
+import streamlit.components.v1 as components
+
+focus_html = """
 <script>
-window.addEventListener('load', function() {
-    function focusInput() {
-        const input = window.parent.document.querySelector('input[data-testid="stTextInput"]');
-        if(input){
-            input.focus();
-            input.selectionStart = input.selectionEnd = input.value.length;
+    function focusField() {
+        const field = document.querySelector('input[type="text"]');
+        if (field) {
+            field.focus();
+            field.style.border = "2px solid #f00";  // visuele check dat focus werkt
         } else {
-            setTimeout(focusInput, 50);
+            setTimeout(focusField, 150);
         }
     }
-    setTimeout(focusInput, 50);
-});
+    setTimeout(focusField, 500);
 </script>
 """
 
-components.html(focus_script, height=0, width=0)
+# Plaats het script binnen de component zelf (zit in juiste iframe)
+components.html(focus_html, height=0, width=0)
