@@ -1,5 +1,6 @@
 import streamlit as st
 import time
+import streamlit.components.v1 as components
 
 # =========================================
 # PAGINA-INSTELLINGEN
@@ -33,11 +34,11 @@ if "user_input" not in st.session_state:
 # =========================================
 # FUNCTIE VOOR NIEUWE ZIN
 # =========================================
-def nieuwe_zin():
-    st.session_state.index = (st.session_state.index + 1) % len(st.session_state.zinnen)
+def nieuwe_zin(correct=False):
+    if correct:
+        st.session_state.index = (st.session_state.index + 1) % len(st.session_state.zinnen)
     st.session_state.feedback = ""
     st.session_state.user_input = ""
-    st.rerun()
 
 # =========================================
 # TITEL EN ZIN
@@ -64,10 +65,12 @@ with col1:
     if st.button("Controleer", key="controleer_button"):
         if user_input.strip().lower() == correct_antwoord.lower():
             st.session_state.feedback = "✅ Goed gedaan!"
+            nieuwe_zin(correct=True)
         else:
             st.session_state.feedback = f"❌ Fout, het juiste antwoord was: {correct_antwoord}"
-        time.sleep(2)
-        nieuwe_zin()
+            # wacht 2 seconden zodat de gebruiker de fout ziet
+            time.sleep(2)
+            nieuwe_zin(correct=True)
 
 # =========================================
 # FEEDBACK
@@ -81,22 +84,18 @@ if st.session_state.feedback:
 # =========================================
 # AUTOMAATISCHE FOCUS VIA COMPONENT
 # =========================================
-import streamlit.components.v1 as components
-
 focus_html = """
 <script>
     function focusField() {
         const field = document.querySelector('input[type="text"]');
         if (field) {
             field.focus();
-            field.style.border = "2px solid #f00";  // visuele check dat focus werkt
         } else {
-            setTimeout(focusField, 150);
+            setTimeout(focusField, 100);
         }
     }
-    setTimeout(focusField, 500);
+    setTimeout(focusField, 100);
 </script>
 """
 
-# Plaats het script binnen de component zelf (zit in juiste iframe)
 components.html(focus_html, height=0, width=0)
