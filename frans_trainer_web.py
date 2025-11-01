@@ -1,14 +1,10 @@
 import streamlit as st
-import time
+import streamlit.components.v1 as components
 
-# =========================================
-# PAGINA-INSTELLINGEN
-# =========================================
+# Pagina-instellingen
 st.set_page_config(page_title="Woordsoorten Trainer", layout="centered")
 
-# =========================================
-# INITIËLE STATE
-# =========================================
+# Initialiseer session_state
 if "zinnen" not in st.session_state:
     st.session_state.zinnen = [
         ("De hond rent in de tuin.", "hond"),
@@ -30,35 +26,26 @@ if "feedback" not in st.session_state:
 if "user_input" not in st.session_state:
     st.session_state.user_input = ""
 
-# =========================================
-# FUNCTIE VOOR NIEUWE ZIN
-# =========================================
+# Functie om naar volgende zin te gaan en input te resetten
 def nieuwe_zin():
     st.session_state.index = (st.session_state.index + 1) % len(st.session_state.zinnen)
     st.session_state.feedback = ""
     st.session_state.user_input = ""
-    st.rerun()
 
-# =========================================
-# TITEL EN ZIN
-# =========================================
+# Titel en zin tonen
 st.title("🧠 Woordsoorten oefenen")
-
 zin, correct_antwoord = st.session_state.zinnen[st.session_state.index]
 st.markdown(f"<h3 style='color:#364953;'>Zin:</h3><p style='font-size:18px'>{zin}</p>", unsafe_allow_html=True)
 
-# =========================================
-# INVULVELD
-# =========================================
+# Tekstinput voor antwoord
 user_input = st.text_input(
     "Wat is het onderwerp?",
     key="user_input",
     label_visibility="collapsed",
+    placeholder="Typ hier je antwoord..."
 )
 
-# =========================================
-# KNOPPEN
-# =========================================
+# Controleer-knop
 col1, col2 = st.columns([1, 3])
 with col1:
     if st.button("Controleer", key="controleer_button"):
@@ -66,37 +53,26 @@ with col1:
             st.session_state.feedback = "✅ Goed gedaan!"
         else:
             st.session_state.feedback = f"❌ Fout, het juiste antwoord was: {correct_antwoord}"
-        time.sleep(2)
         nieuwe_zin()
+        st.experimental_rerun()
 
-# =========================================
-# FEEDBACK
-# =========================================
+# Feedback tonen
 if st.session_state.feedback:
     if "✅" in st.session_state.feedback:
         st.success(st.session_state.feedback)
     else:
         st.error(st.session_state.feedback)
 
-# =========================================
-# AUTOMAATISCHE FOCUS VIA COMPONENT
-# =========================================
-import streamlit.components.v1 as components
-
-focus_html = """
+# Automatisch focus terug in inputveld met JavaScript interval
+focus_script = """
 <script>
-    function focusField() {
-        const field = document.querySelector('input[type="text"]');
-        if (field) {
-            field.focus();
-            field.style.border = "2px solid #f00";  // visuele check dat focus werkt
-        } else {
-            setTimeout(focusField, 150);
-        }
+const interval = setInterval(() => {
+    const input = window.parent.document.querySelector('input[type=text]');
+    if (input) {
+        input.focus();
+        clearInterval(interval);
     }
-    setTimeout(focusField, 500);
+}, 100);
 </script>
 """
-
-# Plaats het script binnen de component zelf (zit in juiste iframe)
-components.html(focus_html, height=0, width=0)
+components.html(focus_script, height=0, width=0)
