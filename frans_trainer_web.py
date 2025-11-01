@@ -24,7 +24,7 @@ if "feedback" not in st.session_state:
 if "user_input" not in st.session_state:
     st.session_state.user_input = ""
 
-def nieuwe_zin():
+def volgende_zin():
     st.session_state.index = (st.session_state.index + 1) % len(st.session_state.zinnen)
     st.session_state.feedback = ""
     st.session_state.user_input = ""
@@ -34,47 +34,50 @@ st.title("🧠 Woordsoorten oefenen")
 zin, correct_antwoord = st.session_state.zinnen[st.session_state.index]
 st.markdown(f"<h3 style='color:#364953;'>Zin:</h3><p style='font-size:18px'>{zin}</p>", unsafe_allow_html=True)
 
-# Uniek key voor input, veranderend elke keer (voor forcing rerender)
-input_key = f"user_input_{st.session_state.index}"
-
+# Input met vaste key zodat hij niet telkens verandert
 user_input = st.text_input(
     "Wat is het onderwerp?",
-    key=input_key,
+    key="user_input",
     value=st.session_state.user_input,
     label_visibility="collapsed",
     placeholder="Typ hier je antwoord..."
 )
 
-# Knop "Controleer"
-if st.button("Controleer", key=f"controleer_button_{st.session_state.index}"):
+controleer_gedrukt = st.button("Controleer")
+
+if controleer_gedrukt:
     if user_input.strip().lower() == correct_antwoord.lower():
         st.session_state.feedback = "✅ Goed gedaan!"
     else:
         st.session_state.feedback = f"❌ Fout, het juiste antwoord was: {correct_antwoord}"
-    nieuwe_zin()
-    # Gebruik st.experimental_rerun om volledig te herladen en focus reset
-    st.experimental_rerun()
+    volgende_zin()
+    # Focus terugzetten en cursor resetten via een kleine delay en front-end event
+    # We slaan de nieuwe user_input op leeg op zodat het veld leeggemaakt wordt
+    st.session_state.user_input = ""
 
-# Feedback tonen
+# Feedback weergeven
 if st.session_state.feedback:
     if "✅" in st.session_state.feedback:
         st.success(st.session_state.feedback)
     else:
         st.error(st.session_state.feedback)
 
-# JavaScript om focus automatisch te zetten op het inputveld na renderen
-focus_js = f"""
+# JavaScript om focus te forceren met eventlistener op DOMContentLoaded en met kleine timeout
+focus_script = """
 <script>
-function setFocus() {{
-    const input = window.parent.document.querySelector('input[id="{input_key}"]');
-    if(input){{
-        input.focus();
-        input.selectionStart = input.selectionEnd = input.value.length;
-    }} else {{
-        setTimeout(setFocus, 100);
-    }}
-}}
-setFocus();
+window.addEventListener('load', function() {
+    function focusInput() {
+        const input = window.parent.document.querySelector('input[data-testid="stTextInput"]');
+        if(input){
+            input.focus();
+            input.selectionStart = input.selectionEnd = input.value.length;
+        } else {
+            setTimeout(focusInput, 50);
+        }
+    }
+    setTimeout(focusInput, 50);
+});
 </script>
 """
-components.html(focus_js, height=0, width=0)
+
+components.html(focus_script, height=0, width=0)
