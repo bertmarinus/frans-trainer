@@ -1,4 +1,3 @@
-# frans_trainer_streamlit.py
 import streamlit as st
 import pandas as pd
 import random
@@ -187,15 +186,6 @@ ensure_meta_for_items(st.session_state.filtered)
 # ---------------- Main UI ----------------
 st.title("Franse Werkwoorden Trainer")
 st.markdown("Vul de ontbrekende vervoeging in. De app houdt score bij en past spaced repetition toe zodat moeilijkere zinnen vaker terugkomen.")
-with st.expander("Handleiding"):
-    st.markdown("""
-- Kies een databron: standaardbestand, ingebouwde voorbeelden of upload een Excel/CSV-bestand (4 kolommen: Zin, Vervoeging, Tijd, Infinitief).
-- Kies een werkwoord (infinitief) en één of meerdere tijden (of 'Alle tijden').
-- Typ de vervoeging in het invulveld en druk op Enter of klik 'Controleer'.
-- Gebruik 'Hint' om het juiste antwoord te zien.
-- De score wordt live bijgehouden. De grafiek toont voortgang per dag.
-- Spaced repetition: zinnen die vaker fout worden beantwoord of langer niet geoefend zijn, krijgen voorrang.
-""")
 
 st.subheader(f"Oefen: {verb}")
 if not st.session_state.filtered:
@@ -219,17 +209,20 @@ else:
                 placeholder="Typ hier de vervoeging"
             )
 
-            # ✅ Automatische focus-fix
+            # ✅ Nieuw verbeterd focus-script
             st.components.v1.html("""
-            <script>
-            window.addEventListener("load", () => {
-              const input = window.parent.document.querySelector('input[data-testid="stTextInput"] input');
-              if (input) {
-                setTimeout(() => { input.focus(); input.select(); }, 100);
-              }
-            });
-            </script>
-            """, height=0)
+<script>
+function focusInput() {
+  const input = window.parent.document.querySelector('input[type="text"]');
+  if (input) {
+    input.focus();
+  } else {
+    setTimeout(focusInput, 100);
+  }
+}
+setTimeout(focusInput, 300);
+</script>
+""", height=0)
 
             cols = st.columns([1, 1, 1])
             with cols[0]:
@@ -262,25 +255,10 @@ else:
             reset_score()
             st.success("Score gereset.")
 
-        # ✅ Status direct onder knoppen
         st.markdown("---")
-        st.subheader("Status")
         st.metric("Score (goed / totaal)", f"{st.session_state.score_good} / {st.session_state.score_total}")
-        total_items = len(st.session_state.filtered)
-        st.write(f"Zinnen in selectie: {total_items}")
-        meta_items = []
-        for it in st.session_state.filtered:
-            k = make_key(it)
-            m = st.session_state.meta.get(k, {"errors": 0, "last": None})
-            meta_items.append({"Zin": it[0], "Vervoeging": it[1], "Tijd": it[2], "Infinitief": it[3], "errors": m["errors"], "last": m["last"]})
-        if meta_items:
-            df_meta = pd.DataFrame(meta_items)
-            df_hard = df_meta.sort_values(["errors", "last"], ascending=[False, True]).head(5)
-            st.write("Moeilijkste zinnen (top 5)")
-            st.table(df_hard[["Zin", "errors", "last"]])
 
 # ---------------- Progress chart ----------------
-st.subheader("Voortgang per dag")
 if st.session_state.history:
     hist_df = pd.DataFrame(st.session_state.history)
     hist_df["timestamp"] = pd.to_datetime(hist_df["timestamp"])
@@ -289,11 +267,5 @@ if st.session_state.history:
     agg["accuracy"] = (agg["sum"] / agg["count"]) * 100
     agg = agg.sort_values("date")
     st.line_chart(data=agg.set_index("date")[["accuracy"]])
-    st.bar_chart(data=agg.set_index("date")[["count"]])
-    st.write("Legenda: lijn = accuracy (%) per dag, balk = aantal pogingen per dag")
 else:
     st.info("Nog geen oefenpogingen geregistreerd.")
-
-st.markdown("---")
-st.markdown("Tip: Voor het beste effect oefen dagelijks. De spaced repetition zorgt dat moeilijkheden terugkomen.")
-st.caption("De cursor springt nu automatisch terug in het invulveld na elke nieuwe zin.")
