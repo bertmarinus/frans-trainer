@@ -1,10 +1,8 @@
 import streamlit as st
 import streamlit.components.v1 as components
 
-# Pagina-instellingen
 st.set_page_config(page_title="Woordsoorten Trainer", layout="centered")
 
-# Initialiseer session_state
 if "zinnen" not in st.session_state:
     st.session_state.zinnen = [
         ("De hond rent in de tuin.", "hond"),
@@ -26,35 +24,36 @@ if "feedback" not in st.session_state:
 if "user_input" not in st.session_state:
     st.session_state.user_input = ""
 
-# Functie om naar volgende zin te gaan en input te resetten
 def nieuwe_zin():
     st.session_state.index = (st.session_state.index + 1) % len(st.session_state.zinnen)
     st.session_state.feedback = ""
     st.session_state.user_input = ""
 
-# Titel en zin tonen
 st.title("🧠 Woordsoorten oefenen")
+
 zin, correct_antwoord = st.session_state.zinnen[st.session_state.index]
 st.markdown(f"<h3 style='color:#364953;'>Zin:</h3><p style='font-size:18px'>{zin}</p>", unsafe_allow_html=True)
 
-# Tekstinput voor antwoord
+# Uniek key voor input, veranderend elke keer (voor forcing rerender)
+input_key = f"user_input_{st.session_state.index}"
+
 user_input = st.text_input(
     "Wat is het onderwerp?",
-    key="user_input",
+    key=input_key,
+    value=st.session_state.user_input,
     label_visibility="collapsed",
     placeholder="Typ hier je antwoord..."
 )
 
-# Controleer-knop
-col1, col2 = st.columns([1, 3])
-with col1:
-    if st.button("Controleer", key="controleer_button"):
-        if user_input.strip().lower() == correct_antwoord.lower():
-            st.session_state.feedback = "✅ Goed gedaan!"
-        else:
-            st.session_state.feedback = f"❌ Fout, het juiste antwoord was: {correct_antwoord}"
-        nieuwe_zin()
-        st.experimental_rerun()
+# Knop "Controleer"
+if st.button("Controleer", key=f"controleer_button_{st.session_state.index}"):
+    if user_input.strip().lower() == correct_antwoord.lower():
+        st.session_state.feedback = "✅ Goed gedaan!"
+    else:
+        st.session_state.feedback = f"❌ Fout, het juiste antwoord was: {correct_antwoord}"
+    nieuwe_zin()
+    # Gebruik st.experimental_rerun om volledig te herladen en focus reset
+    st.experimental_rerun()
 
 # Feedback tonen
 if st.session_state.feedback:
@@ -63,16 +62,19 @@ if st.session_state.feedback:
     else:
         st.error(st.session_state.feedback)
 
-# Automatisch focus terug in inputveld met JavaScript interval
-focus_script = """
+# JavaScript om focus automatisch te zetten op het inputveld na renderen
+focus_js = f"""
 <script>
-const interval = setInterval(() => {
-    const input = window.parent.document.querySelector('input[type=text]');
-    if (input) {
+function setFocus() {{
+    const input = window.parent.document.querySelector('input[id="{input_key}"]');
+    if(input){{
         input.focus();
-        clearInterval(interval);
-    }
-}, 100);
+        input.selectionStart = input.selectionEnd = input.value.length;
+    }} else {{
+        setTimeout(setFocus, 100);
+    }}
+}}
+setFocus();
 </script>
 """
-components.html(focus_script, height=0, width=0)
+components.html(focus_js, height=0, width=0)
