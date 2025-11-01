@@ -1,12 +1,14 @@
 import streamlit as st
 import time
-import random
 
 # =========================================
-# Instellingen
+# PAGINA-INSTELLINGEN
 # =========================================
 st.set_page_config(page_title="Woordsoorten Trainer", layout="centered")
 
+# =========================================
+# INITIËLE STATE
+# =========================================
 if "zinnen" not in st.session_state:
     st.session_state.zinnen = [
         ("De hond rent in de tuin.", "hond"),
@@ -14,16 +16,22 @@ if "zinnen" not in st.session_state:
         ("De kat vangt een muis.", "kat"),
         ("Pieter speelt gitaar.", "Pieter"),
         ("Mijn moeder kookt soep.", "moeder"),
+        ("De vis zwemt in de vijver.", "vis"),
+        ("Het meisje tekent een huis.", "meisje"),
+        ("De man werkt in de tuin.", "man"),
+        ("De vogel vliegt hoog.", "vogel"),
+        ("De baby slaapt rustig.", "baby"),
     ]
 
 if "index" not in st.session_state:
     st.session_state.index = 0
-
 if "feedback" not in st.session_state:
     st.session_state.feedback = ""
+if "user_input" not in st.session_state:
+    st.session_state.user_input = ""
 
 # =========================================
-# Functie om nieuwe zin te tonen
+# FUNCTIE VOOR NIEUWE ZIN
 # =========================================
 def nieuwe_zin():
     st.session_state.index = (st.session_state.index + 1) % len(st.session_state.zinnen)
@@ -32,14 +40,16 @@ def nieuwe_zin():
     st.rerun()
 
 # =========================================
-# UI layout
+# TITEL EN ZIN
 # =========================================
 st.title("🧠 Woordsoorten oefenen")
 
 zin, correct_antwoord = st.session_state.zinnen[st.session_state.index]
-st.write(f"**Zin:** {zin}")
+st.markdown(f"<h3 style='color:#364953;'>Zin:</h3><p style='font-size:18px'>{zin}</p>", unsafe_allow_html=True)
 
-# Invulveld met unieke ID
+# =========================================
+# INVULVELD
+# =========================================
 user_input = st.text_input(
     "Wat is het onderwerp?",
     key="user_input",
@@ -47,7 +57,7 @@ user_input = st.text_input(
 )
 
 # =========================================
-# Controleer-knop
+# KNOPPEN
 # =========================================
 col1, col2 = st.columns([1, 3])
 with col1:
@@ -60,27 +70,33 @@ with col1:
         nieuwe_zin()
 
 # =========================================
-# Feedback tonen
+# FEEDBACK
 # =========================================
 if st.session_state.feedback:
-    st.success(st.session_state.feedback) if "✅" in st.session_state.feedback else st.error(st.session_state.feedback)
+    if "✅" in st.session_state.feedback:
+        st.success(st.session_state.feedback)
+    else:
+        st.error(st.session_state.feedback)
 
 # =========================================
-# Automatisch focus op tekstveld herstellen
+# AUTOMAATISCHE FOCUS VIA COMPONENT
 # =========================================
-focus_script = """
+import streamlit.components.v1 as components
+
+focus_html = """
 <script>
-function refocusInput(){
-    const field = window.parent.document.querySelector('input[type="text"][aria-label="Wat is het onderwerp?"]');
-    if (field){
-        field.focus();
-    } else {
-        // probeer het nog een paar keer als het veld nog niet geladen is
-        setTimeout(refocusInput, 200);
+    function focusField() {
+        const field = document.querySelector('input[type="text"]');
+        if (field) {
+            field.focus();
+            field.style.border = "2px solid #f00";  // visuele check dat focus werkt
+        } else {
+            setTimeout(focusField, 150);
+        }
     }
-}
-// wacht even tot streamlit alles geladen heeft
-setTimeout(refocusInput, 600);
+    setTimeout(focusField, 500);
 </script>
 """
-st.markdown(focus_script, unsafe_allow_html=True)
+
+# Plaats het script binnen de component zelf (zit in juiste iframe)
+components.html(focus_html, height=0, width=0)
