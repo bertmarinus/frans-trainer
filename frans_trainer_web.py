@@ -184,4 +184,3 @@ else:
     st.markdown("---")
     st.subheader("Status")
     st.metric("Score (goed / totaal)", f"{st.session_state.score_good} / {st.session_state.score_total}")
-``
