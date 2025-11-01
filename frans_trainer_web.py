@@ -1,6 +1,5 @@
 import streamlit as st
 import time
-import streamlit.components.v1 as components
 
 # =========================================
 # PAGINA-INSTELLINGEN
@@ -38,13 +37,15 @@ def nieuwe_zin():
     st.session_state.index = (st.session_state.index + 1) % len(st.session_state.zinnen)
     st.session_state.feedback = ""
     st.session_state.user_input = ""
+    st.rerun()
 
 # =========================================
 # TITEL EN ZIN
 # =========================================
 st.title("🧠 Woordsoorten oefenen")
+
 zin, correct_antwoord = st.session_state.zinnen[st.session_state.index]
-st.markdown(f"#### Zin:\n\n{zin}")
+st.markdown(f"<h3 style='color:#364953;'>Zin:</h3><p style='font-size:18px'>{zin}</p>", unsafe_allow_html=True)
 
 # =========================================
 # INVULVELD
@@ -65,7 +66,7 @@ with col1:
             st.session_state.feedback = "✅ Goed gedaan!"
         else:
             st.session_state.feedback = f"❌ Fout, het juiste antwoord was: {correct_antwoord}"
-        time.sleep(1)
+        time.sleep(2)
         nieuwe_zin()
 
 # =========================================
@@ -78,21 +79,24 @@ if st.session_state.feedback:
         st.error(st.session_state.feedback)
 
 # =========================================
-# AUTOMAATISCHE FOCUS VIA MUTATIONOBSERVER
+# AUTOMAATISCHE FOCUS VIA COMPONENT
 # =========================================
+import streamlit.components.v1 as components
+
 focus_html = """
 <script>
-const observer = new MutationObserver((mutations, obs) => {
-  const input = window.parent.document.querySelector('input[data-testid="stTextInput"]');
-  if (input) {
-    input.focus();
-    obs.disconnect();
-  }
-});
-observer.observe(window.parent.document, {
-  childList: true,
-  subtree: true
-});
+    function focusField() {
+        const field = document.querySelector('input[type="text"]');
+        if (field) {
+            field.focus();
+            field.style.border = "2px solid #f00";  // visuele check dat focus werkt
+        } else {
+            setTimeout(focusField, 150);
+        }
+    }
+    setTimeout(focusField, 500);
 </script>
 """
+
+# Plaats het script binnen de component zelf (zit in juiste iframe)
 components.html(focus_html, height=0, width=0)
