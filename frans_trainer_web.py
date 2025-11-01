@@ -168,7 +168,6 @@ if not infinitieven:
     st.error("Geen werkwoorden gevonden in de dataset.")
     st.stop()
 
-
 # Verzamel alle infinitieven
 infinitieven = sorted(set(row[3].strip().lower() for row in data))
 verb = st.sidebar.selectbox("Kies werkwoord (infinitief)", options=infinitieven)
@@ -220,13 +219,17 @@ else:
                 placeholder="Typ hier de vervoeging"
             )
 
-            # focus na elke nieuwe vraag
+            # ✅ Automatische focus-fix
             st.components.v1.html("""
-<script>
-const input = window.parent.document.querySelector('input[type="text"]');
-if (input) { input.focus(); }
-</script>
-""", height=0)
+            <script>
+            window.addEventListener("load", () => {
+              const input = window.parent.document.querySelector('input[data-testid="stTextInput"] input');
+              if (input) {
+                setTimeout(() => { input.focus(); input.select(); }, 100);
+              }
+            });
+            </script>
+            """, height=0)
 
             cols = st.columns([1, 1, 1])
             with cols[0]:
